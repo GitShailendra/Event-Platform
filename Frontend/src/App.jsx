@@ -8,7 +8,7 @@ import AboutPage from './pages/About/AboutPage';
 import ContactPage from './pages/contact/ContactPage';
 import LoginPage from './components/auth/LoginPage';
 import SignupPage from './components/auth/SignupPage';
-
+import UserDashboardPage from './pages/user/UserDashboard';
 function App() {
   const user = null; // Mock user - replace with actual auth context later
 
@@ -25,6 +25,7 @@ function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path='/user-dashboard' element={<UserDashboardPage/>}/>
           </Routes>
         </main>
         
