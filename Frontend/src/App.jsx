@@ -1,3 +1,4 @@
+// App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
@@ -19,8 +20,10 @@ import OrganizerDashboardLayout from './pages/organizer/OrganizerDashboardLayout
 import OrganizerDashboardOverview from './pages/organizer/OrganizerDashboardOverview';
 import OrganizerEvents from './pages/organizer/OrganizerEvents';
 import OrganizerEarnings from './pages/organizer/OrganizerEarnings';
+import ProtectedRoute from './components/ProtectedRoutes';
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
+
 const PublicLayout = ({ children }) => (
   <>
     <Navbar />
@@ -45,8 +48,15 @@ function App() {
             <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
             <Route path="/signup" element={<PublicLayout><SignupPage /></PublicLayout>} />
 
-            {/* User Dashboard Routes */}
-            <Route path="/user" element={<UserLayout />}>
+            {/* User Dashboard Routes (protected) */}
+            <Route
+              path="/user"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <UserLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="upcoming-events" element={<UpcomingEvents />} />
@@ -56,34 +66,50 @@ function App() {
               <Route path="profile" element={<Profile />} />
             </Route>
 
-            {/* Organizer Dashboard Routes */}
-            <Route path="/organizer" element={<OrganizerDashboardLayout />}>
+            {/* Organizer Dashboard Routes (protected) */}
+            <Route
+              path="/organizer"
+              element={
+                <ProtectedRoute allowedRoles={['organizer']}>
+                  <OrganizerDashboardLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<OrganizerDashboardOverview />} />
               <Route path="dashboard" element={<OrganizerDashboardOverview />} />
               <Route path="events" element={<OrganizerEvents />} />
               <Route path="earnings" element={<OrganizerEarnings />} />
-              <Route path="analytics" element={
-                <div className="text-center py-16">
-                  <h2 className="text-white text-2xl">Analytics - Coming Soon!</h2>
-                </div>
-              } />
-              <Route path="profile" element={
-                <div className="text-center py-16">
-                  <h2 className="text-white text-2xl">Organizer Profile - Coming Soon!</h2>
-                </div>
-              } />
+              <Route
+                path="analytics"
+                element={
+                  <div className="text-center py-16">
+                    <h2 className="text-white text-2xl">Analytics - Coming Soon!</h2>
+                  </div>
+                }
+              />
+              <Route
+                path="profile"
+                element={
+                  <div className="text-center py-16">
+                    <h2 className="text-white text-2xl">Organizer Profile - Coming Soon!</h2>
+                  </div>
+                }
+              />
             </Route>
 
             {/* 404 Route */}
-            <Route path="*" element={
-              <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white mb-2">Page Not Found</h2>
-                  <p className="text-gray-400 mb-6">The page you're looking for doesn't exist.</p>
-                  <a href="/" className="btn-primary">Go Home</a>
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen bg-black flex items-center justify-center">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-white mb-2">Page Not Found</h2>
+                    <p className="text-gray-400 mb-6">The page you're looking for doesn't exist.</p>
+                    <a href="/" className="btn-primary">Go Home</a>
+                  </div>
                 </div>
-              </div>
-            } />
+              }
+            />
           </Routes>
         </div>
       </Router>

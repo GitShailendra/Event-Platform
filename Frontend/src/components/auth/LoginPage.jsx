@@ -1,65 +1,80 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { authAPI } from '../../api';
 
 const LoginPage = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
-  });
+  const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (errors.form) setErrors(prev => ({ ...prev, form: '' }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
     setIsLoading(true);
     setErrors({});
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      // login API returns payload directly (because helper returns response.data)
+      const res = await authAPI.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Normalize payload keys; adjust if backend differs
+      const token = res?.token;
+      const userFromLogin = res?.user || null;
+
+      if (!token) throw new Error('Token not found in response');
+
+      // If login endpoint doesn't include user, fetch it now
+      let userToStore = userFromLogin;
+      if (!userToStore) {
+        try {
+          const profile = await authAPI.getProfile();
+          userToStore = profile || null;
+        } catch {
+          userToStore = null;
+        }
+      }
+
+      // Persist token + user via context
+      login(token, userToStore);
+
+      // Navigate to dashboard
+      navigate('/user/dashboard', { replace: true });
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Login failed. Please check your credentials and try again.';
+      setErrors(prev => ({ ...prev, form: message }));
+    } finally {
       setIsLoading(false);
-      console.log('Login attempt:', formData);
-      // Handle successful login
-    }, 2000);
+    }
   };
 
   const socialLogins = [
@@ -88,6 +103,12 @@ const LoginPage = () => {
 
         <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-medium p-8 animate-slide-up">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {errors.form && (
+              <div className="p-3 rounded bg-red-900/40 border border-red-700 text-red-300 text-sm">
+                {errors.form}
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
@@ -112,9 +133,7 @@ const LoginPage = () => {
                   </svg>
                 </div>
               </div>
-              {errors.email && (
-                <p className="mt-2 text-sm text-red-400 animate-scale-in">{errors.email}</p>
-              )}
+              {errors.email && <p className="mt-2 text-sm text-red-400 animate-scale-in">{errors.email}</p>}
             </div>
 
             {/* Password Field */}
@@ -157,9 +176,7 @@ const LoginPage = () => {
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-2 text-sm text-red-400 animate-scale-in">{errors.password}</p>
-              )}
+              {errors.password && <p className="mt-2 text-sm text-red-400 animate-scale-in">{errors.password}</p>}
             </div>
 
             {/* Remember Me & Forgot Password */}
