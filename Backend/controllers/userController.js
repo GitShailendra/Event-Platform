@@ -1,23 +1,41 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { nanoid } = require('nanoid'); // Add this import
 
-// Register new user
+// Register new user - Modified to generate username automatically
 exports.registerUser = async (req, res) => {
+  console.log('Registration attempt');
   try {
-    const { username, email, password, firstName, lastName, role } = req.body;
+    const { email, password, firstName, lastName, role } = req.body; 
+
+    let username;
+    let isUsernameUnique = false;
     
-    // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    while (!isUsernameUnique) {
+      username = nanoid(10);
+      
+      const existingUsername = await User.findOne({ username });
+      if (!existingUsername) {
+        isUsernameUnique = true;
+      }
+    }
+    
+    console.log('Generated unique username:', username);
+    
+    // Check if user exists by email only (since username is auto-generated)
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ 
+        message: 'User already exists with this email address' 
+      });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const newUser = new User({
-      username,
+      username, 
       email,
       password: hashedPassword,
       firstName,
@@ -26,18 +44,22 @@ exports.registerUser = async (req, res) => {
     });
 
     const savedUser = await newUser.save();
+    
     const { password: _, ...userWithoutPassword } = savedUser.toObject();
+    
+    console.log('User registered successfully:', userWithoutPassword.email);
     
     res.status(201).json({
       message: 'User registered successfully',
       user: userWithoutPassword
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Login user
+// Login user (no changes needed)
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -70,7 +92,7 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// Get user profile
+// Get user profile (no changes needed)
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
@@ -83,7 +105,7 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// Update user profile
+// Update user profile (no changes needed)
 exports.updateUserProfile = async (req, res) => {
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -105,7 +127,7 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
-// Get all users (Admin only)
+// Get all users (Admin only) - no changes needed
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');

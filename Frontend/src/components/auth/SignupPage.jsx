@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { authAPI, handleApiError } from '../../api';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -8,6 +10,7 @@ const SignupPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'user', // user or organizer
     agreeToTerms: false
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +18,10 @@ const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [apiError, setApiError] = useState('');
+
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -23,9 +30,12 @@ const SignupPage = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
     
-    // Clear error when user starts typing
+    // Clear errors when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (apiError) {
+      setApiError('');
     }
 
     // Calculate password strength
@@ -60,19 +70,21 @@ const SignupPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.firstName) newErrors.firstName = 'First name is required';
-    if (!formData.lastName) newErrors.lastName = 'Last name is required';
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = 'Please enter a valid email address';
     }
     
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = 'Password must be at least 8 characters long';
+    } else if (passwordStrength < 50) {
+      newErrors.password = 'Please create a stronger password';
     }
     
     if (!formData.confirmPassword) {
@@ -99,13 +111,80 @@ const SignupPage = () => {
     
     setIsLoading(true);
     setErrors({});
+    setApiError('');
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Prepare data for API call
+      const registrationData = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        role: formData.role,
+        name: `${formData.firstName.trim()} ${formData.lastName.trim()}` 
+      };
+      
+      console.log('🚀 Registering user:', { ...registrationData, password: '[HIDDEN]' });
+      
+      // Call registration API
+      const response = await authAPI.register(registrationData);
+      
+      console.log('✅ Registration successful:', response);
+      
+      // Extract token and user info from response
+      const { token, user, message } = response;
+      
+      if (token && user) {
+        // Store token and user info using auth context
+        login(token, user);
+        
+        // Show success message (optional)
+        console.log('Registration successful:', message || 'Account created successfully!');
+        
+        // Redirect based on user role
+        if (user.role === 'organizer' || formData.role === 'organizer') {
+          navigate('/organizer/dashboard', { replace: true });
+        } else {
+          navigate('/user/dashboard', { replace: true });
+        }
+      } else {
+        throw new Error('Invalid response from server');
+      }
+      
+    } catch (error) {
+      console.error('❌ Registration failed:', error);
+      
+      // Handle different types of errors
+      if (error.status === 422 && error.errors) {
+        // Validation errors from server
+        const serverErrors = {};
+        error.errors.forEach(err => {
+          if (err.field) {
+            serverErrors[err.field] = err.message;
+          }
+        });
+        setErrors(serverErrors);
+      } else if (error.status === 409) {
+        // User already exists
+        setErrors({ email: 'An account with this email already exists' });
+      } else {
+        // General error
+        handleApiError(error, setApiError);
+      }
+    } finally {
       setIsLoading(false);
-      console.log('Signup attempt:', formData);
-      // Handle successful signup
-    }, 2000);
+    }
+  };
+
+  const handleSocialLogin = async (provider) => {
+    try {
+      console.log(`🔗 Initiating ${provider} OAuth...`);
+      // Implement OAuth flow here
+      // window.location.href = `${API_URL}/auth/${provider.toLowerCase()}`;
+      setApiError(`${provider} login will be available soon!`);
+    } catch (error) {
+      handleApiError(error, setApiError);
+    }
   };
 
   const socialLogins = [
@@ -134,11 +213,54 @@ const SignupPage = () => {
 
         <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-medium p-8 animate-slide-up">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">
+                I want to join as:
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none transition-all ${
+                  formData.role === 'user' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-600 bg-gray-700 hover:bg-gray-600'
+                }`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="user"
+                    checked={formData.role === 'user'}
+                    onChange={handleChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col items-center w-full">
+                    <span className="text-2xl mb-2">👤</span>
+                    <span className="text-white font-medium">Attendee</span>
+                    <span className="text-gray-400 text-xs">Join events</span>
+                  </div>
+                </label>
+                <label className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none transition-all ${
+                  formData.role === 'organizer' ? 'border-blue-500 bg-blue-900/20' : 'border-gray-600 bg-gray-700 hover:bg-gray-600'
+                }`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="organizer"
+                    checked={formData.role === 'organizer'}
+                    onChange={handleChange}
+                    className="sr-only"
+                  />
+                  <div className="flex flex-col items-center w-full">
+                    <span className="text-2xl mb-2">🎪</span>
+                    <span className="text-white font-medium">Organizer</span>
+                    <span className="text-gray-400 text-xs">Create events</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             {/* Name Fields */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-300 mb-2">
-                  First Name
+                  First Name *
                 </label>
                 <input
                   id="firstName"
@@ -158,7 +280,7 @@ const SignupPage = () => {
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-300 mb-2">
-                  Last Name
+                  Last Name *
                 </label>
                 <input
                   id="lastName"
@@ -181,7 +303,7 @@ const SignupPage = () => {
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email Address
+                Email Address *
               </label>
               <div className="relative">
                 <input
@@ -210,7 +332,7 @@ const SignupPage = () => {
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Password
+                Password *
               </label>
               <div className="relative">
                 <input
@@ -235,16 +357,7 @@ const SignupPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
                 >
-                  {showPassword ? (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
+                  {showPassword ? '👁️‍🗨️' : '👁️'}
                 </button>
               </div>
               
@@ -275,7 +388,7 @@ const SignupPage = () => {
             {/* Confirm Password Field */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
-                Confirm Password
+                Confirm Password *
               </label>
               <div className="relative">
                 <input
@@ -300,16 +413,7 @@ const SignupPage = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
                 >
-                  {showConfirmPassword ? (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
+                  {showConfirmPassword ? '👁️‍🗨️' : '👁️'}
                 </button>
               </div>
               {errors.confirmPassword && (
@@ -319,22 +423,22 @@ const SignupPage = () => {
 
             {/* Terms Agreement */}
             <div>
-              <div className="flex items-center">
+              <div className="flex items-start">
                 <input
                   id="agreeToTerms"
                   name="agreeToTerms"
                   type="checkbox"
                   checked={formData.agreeToTerms}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 bg-gray-700 rounded"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 bg-gray-700 rounded mt-1"
                 />
-                <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-300">
+                <label htmlFor="agreeToTerms" className="ml-3 block text-sm text-gray-300">
                   I agree to the{' '}
-                  <Link to="/terms" className="text-blue-500 hover:text-blue-400 transition-colors">
+                  <Link to="/terms" className="text-blue-500 hover:text-blue-400 transition-colors" target="_blank">
                     Terms of Service
                   </Link>{' '}
                   and{' '}
-                  <Link to="/privacy" className="text-blue-500 hover:text-blue-400 transition-colors">
+                  <Link to="/privacy" className="text-blue-500 hover:text-blue-400 transition-colors" target="_blank">
                     Privacy Policy
                   </Link>
                 </label>
@@ -344,11 +448,23 @@ const SignupPage = () => {
               )}
             </div>
 
+            {/* API Error Display */}
+            {apiError && (
+              <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-400 text-sm">{apiError}</p>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary text-lg py-3 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary text-lg py-3 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isLoading ? (
                 <>
@@ -381,7 +497,9 @@ const SignupPage = () => {
                 <button
                   key={provider.name}
                   type="button"
-                  className={`w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-lg bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 transition-colors ${provider.color}`}
+                  onClick={() => handleSocialLogin(provider.name)}
+                  disabled={isLoading}
+                  className={`w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-lg bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 transition-colors disabled:opacity-50 ${provider.color}`}
                 >
                   <span className="text-xl">{provider.icon}</span>
                 </button>

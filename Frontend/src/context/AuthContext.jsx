@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { getProfile } from '../api';
+import { authAPI } from '../api';
 
 const AuthContext = createContext();
 
@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     // Try to fetch user profile with token
-    getProfile()
+    authAPI.getProfile()
       .then(res => {
         setUser(res.data);
       })
