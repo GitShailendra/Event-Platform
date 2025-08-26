@@ -64,8 +64,20 @@ const LoginPage = () => {
       // Persist token + user via context
       login(token, userToStore);
 
-      // Navigate to dashboard
-      navigate('/user/dashboard', { replace: true });
+      // **FIXED: Role-based navigation**
+      // Get user role from the API response (similar to signup logic)
+      const userRole = userToStore?.role || userToStore?.roles?.[0] || 'user';
+      
+      console.log('User role for navigation:', userRole);
+      
+      // Navigate based on user role
+      if (userRole === 'organizer') {
+        navigate('/organizer/dashboard', { replace: true });
+      } else {
+        // Default to user dashboard for 'user' role or any other role
+        navigate('/user/dashboard', { replace: true });
+      }
+      
     } catch (err) {
       const message =
         err?.response?.data?.message ||
@@ -77,6 +89,7 @@ const LoginPage = () => {
     }
   };
 
+  // Social login data (missing from your original code)
   const socialLogins = [
     { name: 'Google', icon: '🔍', color: 'hover:bg-red-600' },
     { name: 'Facebook', icon: '📘', color: 'hover:bg-blue-600' },
