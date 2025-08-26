@@ -101,80 +101,90 @@ const SignupPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  const newErrors = validateForm();
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+  
+  setIsLoading(true);
+  setErrors({});
+  setApiError('');
+  
+  try {
+    // Prepare data for API call
+    const registrationData = {
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      role: formData.role,
+      name: `${formData.firstName.trim()} ${formData.lastName.trim()}` 
+    };
     
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+    console.log('🚀 Registering user:', { ...registrationData, password: '[HIDDEN]' });
+    
+    // Call registration API
+    const response = await authAPI.register(registrationData);
+    
+    console.log('✅ Registration successful:', response);
+    
+    // Extract token and user info from response
+    const { token, user, message } = response;
+    
+    if (token && user) {
+      // Store token and user info using auth context
+      login(token, user);
+      
+      // Show success message (optional)
+      console.log('Registration successful:', message || 'Account created successfully!');
+      
+      // Redirect based on user role from the API response
+      // Use the role from the API response, fallback to form data
+      const userRole = user.role || user.roles?.[0] || formData.role;
+      
+      console.log('User role for navigation:', userRole);
+      
+      if (userRole === 'organizer') {
+        navigate('/organizer/dashboard', { replace: true });
+      } else {
+        // Default to user dashboard for 'user' role or any other role
+        navigate('/user/dashboard', { replace: true });
+      }
+    } else {
+      throw new Error('Invalid response from server - missing token or user data');
     }
     
-    setIsLoading(true);
-    setErrors({});
-    setApiError('');
+  } catch (error) {
+    console.error('❌ Registration failed:', error);
     
-    try {
-      // Prepare data for API call
-      const registrationData = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        role: formData.role,
-        name: `${formData.firstName.trim()} ${formData.lastName.trim()}` 
-      };
-      
-      console.log('🚀 Registering user:', { ...registrationData, password: '[HIDDEN]' });
-      
-      // Call registration API
-      const response = await authAPI.register(registrationData);
-      
-      console.log('✅ Registration successful:', response);
-      
-      // Extract token and user info from response
-      const { token, user, message } = response;
-      
-      if (token && user) {
-        // Store token and user info using auth context
-        login(token, user);
-        
-        // Show success message (optional)
-        console.log('Registration successful:', message || 'Account created successfully!');
-        
-        // Redirect based on user role
-        if (user.role === 'organizer' || formData.role === 'organizer') {
-          navigate('/organizer/dashboard', { replace: true });
-        } else {
-          navigate('/user/dashboard', { replace: true });
+    // Handle different types of errors
+    if (error.status === 422 && error.errors) {
+      // Validation errors from server
+      const serverErrors = {};
+      error.errors.forEach(err => {
+        if (err.field) {
+          serverErrors[err.field] = err.message;
         }
-      } else {
-        throw new Error('Invalid response from server');
-      }
-      
-    } catch (error) {
-      console.error('❌ Registration failed:', error);
-      
-      // Handle different types of errors
-      if (error.status === 422 && error.errors) {
-        // Validation errors from server
-        const serverErrors = {};
-        error.errors.forEach(err => {
-          if (err.field) {
-            serverErrors[err.field] = err.message;
-          }
-        });
-        setErrors(serverErrors);
-      } else if (error.status === 409) {
-        // User already exists
-        setErrors({ email: 'An account with this email already exists' });
-      } else {
-        // General error
-        handleApiError(error, setApiError);
-      }
-    } finally {
-      setIsLoading(false);
+      });
+      setErrors(serverErrors);
+    } else if (error.status === 409) {
+      // User already exists
+      setErrors({ email: 'An account with this email already exists' });
+    } else {
+      // General error
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          'Registration failed. Please try again.';
+      setApiError(errorMessage);
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleSocialLogin = async (provider) => {
     try {

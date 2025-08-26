@@ -44,14 +44,19 @@ exports.registerUser = async (req, res) => {
     });
 
     const savedUser = await newUser.save();
-    
+    const token = jwt.sign(
+      { userId: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
     const { password: _, ...userWithoutPassword } = savedUser.toObject();
     
     console.log('User registered successfully:', userWithoutPassword.email);
     
     res.status(201).json({
       message: 'User registered successfully',
-      user: userWithoutPassword
+      user: userWithoutPassword,
+      token
     });
   } catch (error) {
     console.error('Registration error:', error);
