@@ -179,12 +179,35 @@ export const authAPI = {
   resetPassword: (token, password) => post('/users/reset-password', { token, password }),
 };
 
-// EVENT APIs
+// Updated EVENT APIs with FormData support
 export const eventAPI = {
   getAllEvents: (params = {}) => get('/events', params),
   getEventById: (id) => get(`/events/${id}`),
-  createEvent: (data) => post('/events', data),
-  updateEvent: (id, data) => put(`/events/${id}`, data),
+  
+  // Updated to handle both JSON and FormData
+  createEvent: (data) => {
+    if (data instanceof FormData) {
+      return post('/events', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return post('/events', data);
+  },
+  
+  // Updated to handle both JSON and FormData
+  updateEvent: (id, data) => {
+    if (data instanceof FormData) {
+      return put(`/events/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return put(`/events/${id}`, data);
+  },
+  
   deleteEvent: (id) => del(`/events/${id}`),
   getOrganizerEvents: () => get('/events/organizer/my-events'),
   searchEvents: (query) => get('/events', { search: query }),

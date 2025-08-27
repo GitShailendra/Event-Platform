@@ -18,6 +18,9 @@ const EventSchema = new mongoose.Schema({
   images: [{ type: String }], // Cloudinary URLs
   tags: [{ type: String }],
   isFeatured: { type: Boolean, default: false },
+  totalEarnings: { type: Number, default: 0 },
+  totalAttendees: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true },
   status: { 
     type: String, 
     enum: ['draft', 'published', 'cancelled', 'completed'], 
