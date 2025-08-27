@@ -21,6 +21,7 @@ import OrganizerDashboardOverview from './pages/organizer/OrganizerDashboardOver
 import OrganizerEvents from './pages/organizer/OrganizerEvents';
 import OrganizerEarnings from './pages/organizer/OrganizerEarnings';
 import ProtectedRoute from './components/ProtectedRoutes';
+import EventDetailsPage from './pages/Events/EventsDetailsPage';
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
@@ -43,6 +44,7 @@ function App() {
             {/* Public routes with Navbar and Footer */}
             <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
             <Route path="/events" element={<PublicLayout><EventPage /></PublicLayout>} />
+            <Route path="/events/:id" element={<EventDetailsPage />} />
             <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
             <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
             <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />

@@ -1,144 +1,95 @@
 import React, { useState, useEffect } from 'react';
-
+import { eventAPI } from '../../api';
+import { useNavigate } from 'react-router-dom';
 const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
   const eventsPerPage = 12;
+  const navigate = useNavigate();
 
-  const categories = ['all', 'concerts', 'workshops', 'webinars', 'meetups', 'conferences'];
+  const categories = ['all', 'concert', 'workshop', 'webinar', 'meetup', 'conference'];
   const locations = ['all', 'mumbai', 'delhi', 'bangalore', 'pune', 'hyderabad', 'chennai'];
 
+  // **REAL API CALL - Replace mock data with this**
   useEffect(() => {
-    // Mock data - replace with API call
-    const mockEvents = [
-      {
-        _id: '1',
-        title: 'React Conference 2025',
-        description: 'Join the biggest React conference of the year with amazing speakers and workshops.',
-        date: '2025-09-15',
-        location: 'mumbai',
-        price: 2500,
-        category: 'conferences',
-        images: null,
-        availableSeats: 150,
-        organizer: 'Tech Events India'
-      },
-      {
-        _id: '2',
-        title: 'JavaScript Workshop',
-        description: 'Learn advanced JavaScript concepts and modern development practices.',
-        date: '2025-10-20',
-        location: 'delhi',
-        price: 1500,
-        category: 'workshops',
-        images: null,
-        availableSeats: 50,
-        organizer: 'Code Academy'
-      },
-      {
-        _id: '3',
-        title: 'Web Design Bootcamp',
-        description: 'Master modern web design principles and create stunning websites.',
-        date: '2025-11-10',
-        location: 'bangalore',
-        price: 3000,
-        category: 'workshops',
-        images: null,
-        availableSeats: 80,
-        organizer: 'Design Hub'
-      },
-      {
-        _id: '4',
-        title: 'AI & ML Summit',
-        description: 'Explore the future of artificial intelligence and machine learning.',
-        date: '2025-12-05',
-        location: 'pune',
-        price: 4000,
-        category: 'conferences',
-        images: null,
-        availableSeats: 200,
-        organizer: 'AI Institute'
-      },
-      {
-        _id: '5',
-        title: 'Startup Networking Meetup',
-        description: 'Connect with entrepreneurs and investors in your city.',
-        date: '2025-08-25',
-        location: 'mumbai',
-        price: 500,
-        category: 'meetups',
-        images: null,
-        availableSeats: 100,
-        organizer: 'Startup Hub'
-      },
-      {
-        _id: '6',
-        title: 'Digital Marketing Webinar',
-        description: 'Learn the latest digital marketing strategies and tools.',
-        date: '2025-09-30',
-        location: 'online',
-        price: 0,
-        category: 'webinars',
-        images: null,
-        availableSeats: 500,
-        organizer: 'Marketing Pro'
-      },
-      {
-        _id: '7',
-        title: 'Music Festival 2025',
-        description: 'Three days of amazing music with top artists from around the world.',
-        date: '2025-11-15',
-        location: 'bangalore',
-        price: 5000,
-        category: 'concerts',
-        images: null,
-        availableSeats: 1000,
-        organizer: 'Music Events Ltd'
-      },
-      {
-        _id: '8',
-        title: 'Photography Workshop',
-        description: 'Learn professional photography techniques and post-processing.',
-        date: '2025-10-08',
-        location: 'chennai',
-        price: 2000,
-        category: 'workshops',
-        images: null,
-        availableSeats: 30,
-        organizer: 'Photo Academy'
+    fetchEvents();
+  }, [searchQuery, selectedCategory, selectedLocation, sortBy, currentPage]);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const params = {
+        page: currentPage,
+        limit: eventsPerPage,
+        sortBy: sortBy === 'name' ? 'title' : sortBy, // Map 'name' to 'title' for backend
+        status: 'published'
+      };
+
+      // Add filters only if they're not 'all'
+      if (selectedCategory !== 'all') {
+        params.category = selectedCategory;
       }
-    ];
 
-    setTimeout(() => {
-      setEvents(mockEvents);
-      setFilteredEvents(mockEvents);
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      // Note: Your backend doesn't have location filtering, so we'll filter on frontend
+      // Or you can add location filtering to your backend controller
+
+      console.log('Fetching events with params:', params);
+      const response = await eventAPI.getAllEvents(params);
+
+      console.log('API Response:', response);
+
+      if (response && response.events) {
+        let fetchedEvents = response.events;
+
+        // Filter by location on frontend (since backend doesn't have this filter)
+        if (selectedLocation !== 'all') {
+          fetchedEvents = fetchedEvents.filter(event =>
+            event.location && event.location.toLowerCase().includes(selectedLocation.toLowerCase())
+          );
+        }
+
+        // Apply sorting on frontend for consistency
+        fetchedEvents = sortEvents(fetchedEvents, sortBy);
+
+        setEvents(fetchedEvents);
+        setFilteredEvents(fetchedEvents);
+        setTotalPages(response.totalPages || 1);
+        setTotalEvents(response.total || fetchedEvents.length);
+      } else {
+        setEvents([]);
+        setFilteredEvents([]);
+        setTotalPages(1);
+        setTotalEvents(0);
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to load events');
+      setEvents([]);
+      setFilteredEvents([]);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
-  useEffect(() => {
-    filterAndSortEvents();
-  }, [events, searchQuery, selectedCategory, selectedLocation, sortBy]);
-
-  const filterAndSortEvents = () => {
-    let filtered = events.filter(event => {
-      const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          event.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'all' || event.category === selectedCategory;
-      const matchesLocation = selectedLocation === 'all' || event.location === selectedLocation;
-      
-      return matchesSearch && matchesCategory && matchesLocation;
-    });
-
-    // Sort events
-    filtered.sort((a, b) => {
-      switch (sortBy) {
+  // Helper function to sort events
+  const sortEvents = (eventsList, sortMethod) => {
+    return [...eventsList].sort((a, b) => {
+      switch (sortMethod) {
         case 'date':
           return new Date(a.date) - new Date(b.date);
         case 'price-low':
@@ -146,27 +97,31 @@ const EventsPage = () => {
         case 'price-high':
           return b.price - a.price;
         case 'name':
+        case 'title':
           return a.title.localeCompare(b.title);
         default:
           return 0;
       }
     });
-
-    setFilteredEvents(filtered);
-    setCurrentPage(1);
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setCurrentPage(1); // Reset to first page on search
   };
 
-  // Pagination
-  const indexOfLastEvent = currentPage * eventsPerPage;
-  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-  const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
-  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedLocation('all');
+    setSortBy('date');
+    setCurrentPage(1);
+  };
 
   if (loading) {
     return (
@@ -174,6 +129,24 @@ const EventsPage = () => {
         <div className="text-center animate-pulse-soft">
           <div className="spinner mx-auto mb-4"></div>
           <p className="text-white text-lg font-medium">Loading amazing events...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h3 className="text-2xl font-bold text-white mb-2">Something went wrong</h3>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button
+            onClick={() => fetchEvents()}
+            className="btn btn-primary hover-lift"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -193,7 +166,7 @@ const EventsPage = () => {
             </p>
           </div>
 
-          {/* Search and Filter Bar - FIXED STYLING */}
+          {/* Search and Filter Bar */}
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 animate-slide-up shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Search */}
@@ -265,7 +238,7 @@ const EventsPage = () => {
               </div>
               <div className="text-gray-300">
                 <span className="bg-gray-700 border border-gray-600 text-gray-300 px-3 py-1 rounded-full text-sm font-medium">
-                  {currentEvents.length} of {filteredEvents.length} events
+                  {filteredEvents.length} of {totalEvents} events
                 </span>
               </div>
             </div>
@@ -276,9 +249,9 @@ const EventsPage = () => {
       {/* Events Grid */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {currentEvents.length > 0 ? (
+          {filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {currentEvents.map((event, index) => (
+              {filteredEvents.map((event, index) => (
                 <EventCard key={event._id} event={event} index={index} />
               ))}
             </div>
@@ -287,14 +260,12 @@ const EventsPage = () => {
               <div className="text-6xl mb-4 animate-float">🔍</div>
               <h3 className="text-2xl font-bold text-white mb-2">No Events Found</h3>
               <p className="text-gray-400 mb-6 leading-relaxed">
-                Try adjusting your search criteria or filters
+                {searchQuery || selectedCategory !== 'all' || selectedLocation !== 'all'
+                  ? 'Try adjusting your search criteria or filters'
+                  : 'No events available at the moment. Check back later!'}
               </p>
-              <button 
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('all');
-                  setSelectedLocation('all');
-                }}
+              <button
+                onClick={clearFilters}
                 className="btn btn-primary hover-lift"
               >
                 Clear Filters
@@ -320,7 +291,7 @@ const EventsPage = () => {
                   </svg>
                   Previous
                 </button>
-                
+
                 <div className="flex items-center space-x-1">
                   {[...Array(Math.min(totalPages, 5))].map((_, index) => {
                     let pageNumber;
@@ -332,23 +303,22 @@ const EventsPage = () => {
                       pageNumber = startPage + index;
                       if (pageNumber > endPage) return null;
                     }
-                    
+
                     return (
                       <button
                         key={pageNumber}
                         onClick={() => paginate(pageNumber)}
-                        className={`px-3 py-2 rounded-lg transition-all duration-200 hover-lift ${
-                          currentPage === pageNumber
+                        className={`px-3 py-2 rounded-lg transition-all duration-200 hover-lift ${currentPage === pageNumber
                             ? 'btn btn-primary'
                             : 'btn btn-secondary'
-                        }`}
+                          }`}
                       >
                         {pageNumber}
                       </button>
                     );
                   })}
                 </div>
-                
+
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -368,8 +338,9 @@ const EventsPage = () => {
   );
 };
 
-// Event Card Component - Same as before
+// Updated Event Card Component to handle real data structure
 const EventCard = ({ event, index }) => {
+  const navigate = useNavigate();
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       weekday: 'short',
@@ -381,22 +352,22 @@ const EventCard = ({ event, index }) => {
 
   const getCategoryIcon = (category) => {
     const icons = {
-      concerts: '🎵',
-      workshops: '🛠️',
-      webinars: '💻',
-      meetups: '🤝',
-      conferences: '🎪'
+      concert: '🎵',
+      workshop: '🛠️',
+      webinar: '💻',
+      meetup: '🤝',
+      conference: '🎪'
     };
     return icons[category] || '📅';
   };
 
   const getCategoryBadge = (category) => {
     const badges = {
-      concerts: 'badge-primary',
-      workshops: 'badge-success',
-      webinars: 'badge-warning',
-      meetups: 'badge-danger',
-      conferences: 'badge-primary'
+      concert: 'badge-primary',
+      workshop: 'badge-success',
+      webinar: 'badge-warning',
+      meetup: 'badge-danger',
+      conference: 'badge-primary'
     };
     return badges[category] || 'badge-outline';
   };
@@ -410,6 +381,16 @@ const EventCard = ({ event, index }) => {
 
   const seatsStatus = getSeatsStatus(event.availableSeats);
 
+  // Handle organizer info (from your real data structure)
+  const getOrganizerName = () => {
+    if (event.createdBy) {
+      return event.createdBy.username ||
+        `${event.createdBy.firstName || ''} ${event.createdBy.lastName || ''}`.trim() ||
+        'Event Organizer';
+    }
+    return 'Event Organizer';
+  };
+
   return (
     <div
       className="card hover-lift hover-glow animate-scale-in overflow-hidden"
@@ -417,27 +398,35 @@ const EventCard = ({ event, index }) => {
     >
       {/* Event Image/Icon */}
       <div className="relative h-48 gradient-bg flex items-center justify-center">
-        {event.images && event.images[0] ? (
+        {event.images && event.images.length > 0 && event.images[0] ? (
           <img
-            src={event.images}
+            src={event.images[0]}
             alt={event.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
           />
-        ) : (
-          <div className="text-6xl text-white text-glow">
-            {getCategoryIcon(event.category)}
-          </div>
-        )}
-        
+        ) : null}
+
+        {/* Fallback icon (always present, hidden if image loads) */}
+        <div
+          className="text-6xl text-black text-glow flex items-center justify-center absolute inset-0"
+          style={{ display: event.images && event.images.length > 0 ? 'none' : 'flex' }}
+        >
+          {getCategoryIcon(event.category)}
+        </div>
+
         {/* Price Badge */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 text-black font-bold">
           <span className={`badge ${event.price === 0 ? 'badge-success' : 'badge-primary'}`}>
             {event.price === 0 ? 'Free' : `₹${event.price.toLocaleString()}`}
           </span>
         </div>
 
         {/* Category Badge */}
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 text-black font-bold">
           <span className={`badge ${getCategoryBadge(event.category)} capitalize`}>
             {event.category}
           </span>
@@ -445,9 +434,9 @@ const EventCard = ({ event, index }) => {
       </div>
 
       {/* Event Details */}
-      <div className="p-6">
+      <div className="p-6 bg-gray-800">
         {/* Date and Location */}
-        <div className="flex items-center justify-between text-sm text-gray-400 mb-3">
+        <div className="flex items-center justify-between text-sm text-gray-400 mb-3 ">
           <div className="flex items-center">
             <svg className="h-4 w-4 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
@@ -458,7 +447,7 @@ const EventCard = ({ event, index }) => {
             <svg className="h-4 w-4 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
             </svg>
-            <span className="capitalize font-medium">{event.location}</span>
+            <span className="capitalize font-medium">{event.location || 'TBD'}</span>
           </div>
         </div>
 
@@ -478,7 +467,7 @@ const EventCard = ({ event, index }) => {
             <svg className="h-4 w-4 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
             </svg>
-            <span className="font-medium">{event.organizer}</span>
+            <span className="font-medium">{getOrganizerName()}</span>
           </span>
           <span className={`badge ${seatsStatus.class}`}>
             {seatsStatus.text}
@@ -487,7 +476,7 @@ const EventCard = ({ event, index }) => {
 
         {/* Action Button */}
         <button
-          onClick={() => console.log('View details for:', event.title)}
+          onClick={() => navigate(`/events/${event._id}`)} // Add this import: import { useNavigate } from 'react-router-dom';
           className="btn btn-primary w-full group"
           disabled={event.availableSeats === 0}
         >
@@ -498,6 +487,7 @@ const EventCard = ({ event, index }) => {
             </svg>
           )}
         </button>
+
       </div>
     </div>
   );
