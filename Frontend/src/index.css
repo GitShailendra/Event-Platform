@@ -74,8 +74,7 @@ body {
 .card {
   /* background-color: white; */ /* Remove this line */
   background-color: #1f2937; /* Add gray-800 as default */
-  border-radius: 0.75rem;
-  padding: 1.5rem; /* Add padding */
+  border-radius: 0.75rem; /* Add padding */
   box-shadow: 0 4px 25px -5px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease-in-out;
 }
@@ -140,4 +139,48 @@ body {
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
+}
+
+/* Additional animations for mobile menu */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes fadeIn {
+  0% { 
+    opacity: 0; 
+  }
+  100% { 
+    opacity: 1; 
+  }
+}
+
+@keyframes slideUp {
+  0% { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Ensure full screen coverage on mobile */
+@media (max-width: 768px) {
+  .fixed.inset-0 {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
 }

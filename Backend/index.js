@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 // Add your chat and admin routes as needed
 
 // For real-time chat with Socket.io
@@ -25,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
-
+app.use('/api/analytics', analyticsRoutes);
 // Example test route
 app.get('/', (req, res) => {
   res.send('API is running...');

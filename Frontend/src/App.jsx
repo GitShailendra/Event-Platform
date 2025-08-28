@@ -44,7 +44,7 @@ function App() {
             {/* Public routes with Navbar and Footer */}
             <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
             <Route path="/events" element={<PublicLayout><EventPage /></PublicLayout>} />
-            <Route path="/events/:id" element={<EventDetailsPage />} />
+            <Route path="/events/:id" element={<ProtectedRoute><EventDetailsPage /></ProtectedRoute>} />
             <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
             <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
             <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />

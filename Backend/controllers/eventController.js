@@ -201,3 +201,23 @@ exports.getEventsByOrganizer = async (req, res) => {
   }
 };
 
+exports.trackEventView = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user ? req.user.id : null;
+
+    // Update analytics (you can make this more sophisticated)
+    await Analytics.findOneAndUpdate(
+      { event: id },
+      { 
+        $inc: { views: 1 },
+        lastUpdated: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: 'View tracked' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
