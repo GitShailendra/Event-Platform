@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const organizerDashboardRoutes  = require('./routes/organizerDashboard')
 // Add your chat and admin routes as needed
 
 // For real-time chat with Socket.io
@@ -27,6 +28,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/organizer/dashboard', organizerDashboardRoutes);
+
 // Example test route
 app.get('/', (req, res) => {
   res.send('API is running...');

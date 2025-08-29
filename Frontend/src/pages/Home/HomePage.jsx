@@ -1,58 +1,108 @@
 import React, { useState, useEffect } from 'react';
-
+import { eventAPI } from '../../api';
+import { useNavigate } from 'react-router-dom';
 const HomePage = () => {
   const [featuredEvents, setFeaturedEvents] = useState([]);
   const [stats, setStats] = useState({ totalEvents: 0, totalUsers: 0, totalBookings: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Mock data instead of API call
-    setFeaturedEvents([
-      {
-        _id: '1',
-        title: 'React Conference 2025',
-        description: 'Join the biggest React conference of the year with amazing speakers and workshops.',
-        date: '2025-09-15',
-        location: 'Mumbai',
-        price: 2500,
-        images: null
-      },
-      {
-        _id: '2',
-        title: 'JavaScript Workshop',
-        description: 'Learn advanced JavaScript concepts and modern development practices.',
-        date: '2025-10-20',
-        location: 'Delhi',
-        price: 1500,
-        images: null
-      },
-      {
-        _id: '3',
-        title: 'Web Design Bootcamp',
-        description: 'Master modern web design principles and create stunning websites.',
-        date: '2025-11-10',
-        location: 'Bangalore',
-        price: 3000,
-        images: null
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch featured events from your API
+        const eventsResponse = await eventAPI.getAllEvents({ 
+          status: 'published', 
+          limit: 6,
+          isFeatured: true 
+        });
+        
+        // Handle the response structure based on your API
+        if (eventsResponse && eventsResponse.events) {
+          setFeaturedEvents(eventsResponse.events);
+        } else if (Array.isArray(eventsResponse)) {
+          setFeaturedEvents(eventsResponse);
+        } else {
+          setFeaturedEvents([]);
+        }
+        
+        // Fetch stats - you'll need to implement this endpoint
+        try {
+          const statsResponse = await eventAPI.getStats();
+          if (statsResponse) {
+            setStats(statsResponse);
+          }
+        } catch (statsError) {
+          console.error('Error fetching stats:', statsError);
+          // Keep default stats if stats fetch fails
+          setStats({
+            totalEvents: 0,
+            totalUsers: 0,
+            totalBookings: 0
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        setError(error.message || 'Failed to fetch events');
+        setFeaturedEvents([]);
+      } finally {
+        setLoading(false);
       }
-    ]);
-    setStats({
-      totalEvents: 150,
-      totalUsers: 1250,
-      totalBookings: 5420
-    });
+    };
+
+    fetchEvents();
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       console.log('Search for:', searchQuery);
+      // You can implement search functionality here
+      // Example: navigate to search results page or filter events
     }
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-spin">⏳</div>
+          <h2 className="text-2xl font-bold">Loading Events...</h2>
+          <p className="text-gray-300 mt-2">Please wait while we fetch the latest events</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <h2 className="text-2xl font-bold mb-2">Error Loading Events</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Hero Section - CHANGED FROM WHITE TO BLACK */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden py-20 lg:py-32 bg-black">
         <div className="absolute inset-0 gradient-bg opacity-10"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -99,7 +149,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Stats Section - CHANGED FROM WHITE TO DARK GRAY */}
+      {/* Stats Section */}
       <section className="py-16 bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -118,7 +168,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Featured Events - CHANGED FROM LIGHT GRAY TO BLACK */}
+      {/* Featured Events */}
       <section className="py-20 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -145,14 +195,14 @@ const HomePage = () => {
           )}
 
           <div className="text-center mt-12">
-            <button className="btn-primary text-lg px-8 py-4">
+            <button className="btn-primary text-lg px-8 py-4" onClick={()=> navigate('/events')}>
               View All Events
             </button>
           </div>
         </div>
       </section>
 
-      {/* Categories Section - CHANGED FROM WHITE TO DARK GRAY */}
+      {/* Categories Section */}
       <section className="py-20 bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -166,14 +216,14 @@ const HomePage = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { name: 'Concerts', icon: '🎵', color: 'bg-purple-800 text-purple-200 hover:bg-purple-700' },
-              { name: 'Workshops', icon: '🛠️', color: 'bg-blue-800 text-blue-200 hover:bg-blue-700' },
-              { name: 'Webinars', icon: '💻', color: 'bg-green-800 text-green-200 hover:bg-green-700' },
-              { name: 'Meetups', icon: '🤝', color: 'bg-orange-800 text-orange-200 hover:bg-orange-700' }
+              { name: 'Concerts', icon: '🎵', color: 'bg-purple-800 text-purple-200 hover:bg-purple-700', category: 'concert' },
+              { name: 'Workshops', icon: '🛠️', color: 'bg-blue-800 text-blue-200 hover:bg-blue-700', category: 'workshop' },
+              { name: 'Webinars', icon: '💻', color: 'bg-green-800 text-green-200 hover:bg-green-700', category: 'webinar' },
+              { name: 'Meetups', icon: '🤝', color: 'bg-orange-800 text-orange-200 hover:bg-orange-700', category: 'meetup' }
             ].map((category, index) => (
               <button
                 key={category.name}
-                onClick={() => console.log('Category clicked:', category.name)}
+                onClick={() => console.log('Category clicked:', category.category)}
                 className={`card p-6 text-center hover:scale-105 transition-all duration-300 ${category.color} border border-gray-600`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
@@ -188,8 +238,9 @@ const HomePage = () => {
   );
 };
 
-// Event Card Component - UPDATED FOR DARK THEME
+// Event Card Component
 const EventCard = ({ event, index }) => {
+  const navigate = useNavigate();
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       weekday: 'short',
@@ -205,19 +256,25 @@ const EventCard = ({ event, index }) => {
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <div className="relative h-48 bg-gradient-to-r from-blue-600 to-purple-600">
-        {event.images && event.images[0] ? (
+        {event.images && event.images.length > 0 && event.images[0] ? (
           <img
-            src={event.images}
+            src={event.images[0]}
             alt={event.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white text-6xl">
-            🎪
-          </div>
-        )}
+        ) : null}
+        <div 
+          className="w-full h-full flex items-center justify-center text-white text-6xl"
+          style={{ display: event.images && event.images.length > 0 && event.images[0] ? 'none' : 'flex' }}
+        >
+          🎪
+        </div>
         <div className="absolute top-4 right-4 bg-black bg-opacity-70 rounded-full px-3 py-1 text-sm font-semibold text-blue-400">
-          ₹{event.price}
+          ₹{event.price?.toLocaleString() || '0'}
         </div>
       </div>
 
@@ -245,7 +302,7 @@ const EventCard = ({ event, index }) => {
             {event.location}
           </div>
           <button
-            onClick={() => console.log('View details for:', event.title)}
+            onClick={() => navigate(`/events/${event._id}`)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105"
           >
             View Details

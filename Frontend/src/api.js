@@ -254,11 +254,177 @@ export const uploadAPI = {
   uploadProfileImage: (formData) => uploadFile('/upload/profile-image', formData),
   uploadMultipleImages: (formData) => uploadFile('/upload/multiple', formData),
 };
+export const analyticsAPI = {
+  // Get organizer dashboard analytics with optional period filter
+  getOrganizerAnalytics: (period = '30d') => 
+    get('/analytics/dashboard', { period }),
+
+  // Get specific event analytics by event ID
+  getEventAnalytics: (eventId) => 
+    get(`/analytics/event/${eventId}`),
+
+  // Get revenue analytics with optional period filter
+  getRevenueAnalytics: (period = '12m') => 
+    get('/analytics/revenue', { period }),
+
+  // Get audience analytics and customer insights
+  getAudienceAnalytics: () => 
+    get('/analytics/audience'),
+
+  // Additional analytics endpoints you might want to add
+  getEventPerformanceComparison: (eventIds) => 
+    get('/analytics/compare', { eventIds: eventIds.join(',') }),
+
+  getCategoryAnalytics: () => 
+    get('/analytics/categories'),
+
+  getBookingTrends: (startDate, endDate) => 
+    get('/analytics/booking-trends', { startDate, endDate }),
+
+  // Real-time analytics (if you implement WebSocket updates)
+  getLiveEventStats: (eventId) => 
+    get(`/analytics/live/${eventId}`),
+
+  // Export analytics data
+  exportAnalyticsReport: (period = '30d', format = 'csv') => 
+    get('/analytics/export', { period, format }, {
+      responseType: 'blob', // For file downloads
+    }),
+};
+// Add to your api.js file
+export const organizerDashboardAPI = {
+  getDashboardOverview: () => get('/organizer/dashboard/overview'),
+};
 
 // ===========================================
 // UTILITY FUNCTIONS
 // ===========================================
+export const analyticsUtils = {
+  // Format revenue data for charts
+  formatRevenueData: (revenueData) => {
+    return revenueData.map(item => ({
+      date: `${item._id.year}-${String(item._id.month).padStart(2, '0')}${item._id.day ? `-${String(item._id.day).padStart(2, '0')}` : ''}`,
+      revenue: item.revenue,
+      bookings: item.bookings,
+      tickets: item.tickets || 0
+    }));
+  },
 
+  // Calculate period over period growth
+  calculateGrowth: (current, previous) => {
+    if (!previous || previous === 0) return 100;
+    return (((current - previous) / previous) * 100).toFixed(2);
+  },
+
+  // Format currency for display
+  formatCurrency: (amount, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  },
+
+  // Format percentage
+  formatPercentage: (value, decimals = 2) => {
+    return `${parseFloat(value).toFixed(decimals)}%`;
+  },
+
+  // Process event stats for charts
+  processEventStats: (eventStats) => {
+    const statusMap = {
+      'active': 'Active',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled',
+      'draft': 'Draft'
+    };
+
+    return eventStats.map(stat => ({
+      status: statusMap[stat._id] || stat._id,
+      count: stat.count,
+      totalCapacity: stat.totalCapacity,
+      totalRevenue: stat.totalRevenue
+    }));
+  },
+
+  // Calculate key performance indicators
+  calculateKPIs: (analyticsData) => {
+    const { overview, bookingStats } = analyticsData;
+    
+    return {
+      // Revenue per event
+      revenuePerEvent: overview.totalEvents > 0 
+        ? (overview.totalRevenue / overview.totalEvents).toFixed(2) 
+        : 0,
+      
+      // Average order value
+      averageOrderValue: bookingStats.totalBookings > 0 
+        ? (bookingStats.totalRevenue / bookingStats.totalBookings).toFixed(2) 
+        : 0,
+      
+      // Occupancy rate
+      occupancyRate: overview.occupancyRate || 0,
+      
+      // Revenue per ticket
+      revenuePerTicket: overview.totalSold > 0 
+        ? (overview.totalRevenue / overview.totalSold).toFixed(2) 
+        : 0,
+    };
+  }
+};
+
+// Error handling specifically for analytics
+export const analyticsErrorHandler = (error, context = 'analytics') => {
+  console.error(`Analytics Error in ${context}:`, error);
+  
+  // Custom error messages for analytics
+  const errorMessages = {
+    403: 'Access denied. Organizer role required for analytics.',
+    404: 'Analytics data not found for the specified event.',
+    500: 'Failed to load analytics data. Please try again.',
+  };
+
+  const status = error?.status || 500;
+  return errorMessages[status] || error?.message || 'Failed to load analytics data';
+};
+
+// Analytics data cache utility (optional - for performance)
+export const analyticsCache = {
+  cache: new Map(),
+  
+  // Set cache with expiration (5 minutes default)
+  set(key, data, expirationMs = 5 * 60 * 1000) {
+    const expirationTime = Date.now() + expirationMs;
+    this.cache.set(key, { data, expirationTime });
+  },
+  
+  // Get from cache if not expired
+  get(key) {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+    
+    if (Date.now() > cached.expirationTime) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return cached.data;
+  },
+  
+  // Clear all cache
+  clear() {
+    this.cache.clear();
+  },
+  
+  // Remove expired entries
+  cleanup() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now > value.expirationTime) {
+        this.cache.delete(key);
+      }
+    }
+  }
+};
 // Token management
 export const tokenUtils = {
   getToken: () => localStorage.getItem('token'),

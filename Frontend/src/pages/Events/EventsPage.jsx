@@ -18,7 +18,11 @@ const EventsPage = () => {
 
   const categories = ['all', 'concert', 'workshop', 'webinar', 'meetup', 'conference'];
   const locations = ['all', 'mumbai', 'delhi', 'bangalore', 'pune', 'hyderabad', 'chennai'];
-
+  /* Scroll bottom to top */
+  useEffect(()=>{
+    window.scrollTo(0,0);
+    
+  },[]);
   // **REAL API CALL - Replace mock data with this**
   useEffect(() => {
     fetchEvents();

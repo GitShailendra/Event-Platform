@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { eventAPI } from '../../api';
 import CreateEventModal from './CreateEventModal';
+import { useNavigate } from 'react-router-dom';
 
 const OrganizerEvents = () => {
   const [activeFilter, setActiveFilter] = useState('all');
@@ -8,7 +9,7 @@ const OrganizerEvents = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-
+  const navigete = useNavigate();
   // Fetch organizer events on component mount
   useEffect(() => {
     fetchOrganizerEvents();
@@ -303,7 +304,7 @@ const OrganizerEvents = () => {
                         <button className="btn-primary text-sm px-4 py-2 flex-1">
                           Manage
                         </button>
-                        <button className="btn-secondary text-sm px-3 py-2">
+                        <button className="btn-secondary text-sm px-3 py-2" onClick={() =>navigete(`/organizer/analytics/${event._id}`)}>
                           <span className="text-lg">📊</span>
                         </button>
                         <button className="btn-secondary text-sm px-3 py-2">

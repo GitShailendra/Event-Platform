@@ -1,57 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { organizerDashboardAPI } from '../../api'; // Import the new API
 
 const OrganizerDashboardOverview = () => {
-  // Mock organizer data
-  const organizer = {
-    name: 'Alice Johnson',
-    company: 'Tech Events Ltd.',
-    totalEvents: 12,
-    activeEvents: 3,
-    totalEarnings: 245000,
-    totalAttendees: 1250,
-    thisMonthEarnings: 45000,
-    thisMonthAttendees: 180
-  };
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock recent events
-  const recentEvents = [
-    {
-      id: 1,
-      title: 'React Advanced Workshop',
-      date: '2025-09-15',
-      status: 'active',
-      attendees: 45,
-      earnings: 22500,
-      category: 'workshops'
-    },
-    {
-      id: 2,
-      title: 'AI Summit Conference',
-      date: '2025-10-20',
-      status: 'upcoming',
-      attendees: 120,
-      earnings: 48000,
-      category: 'conferences'
-    },
-    {
-      id: 3,
-      title: 'JavaScript Bootcamp',
-      date: '2025-08-28',
-      status: 'completed',
-      attendees: 35,
-      earnings: 17500,
-      category: 'workshops'
+  // Fetch real dashboard data
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await organizerDashboardAPI.getDashboardOverview();
+      setDashboardData(response.data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  // Mock analytics data
-  const analyticsData = [
-    { month: 'Jun', earnings: 35000, attendees: 150 },
-    { month: 'Jul', earnings: 42000, attendees: 180 },
-    { month: 'Aug', earnings: 38000, attendees: 165 },
-    { month: 'Sep', earnings: 45000, attendees: 200 }
-  ];
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -73,21 +44,57 @@ const OrganizerDashboardOverview = () => {
     const badges = {
       active: 'bg-green-900 text-green-300 border-green-700',
       upcoming: 'bg-blue-900 text-blue-300 border-blue-700',
-      completed: 'bg-gray-700 text-gray-300 border-gray-600'
+      completed: 'bg-gray-700 text-gray-300 border-gray-600',
+      published: 'bg-green-900 text-green-300 border-green-700',
+      draft: 'bg-yellow-900 text-yellow-300 border-yellow-700'
     };
     return badges[status] || 'bg-gray-700 text-gray-300 border-gray-600';
   };
 
   const getCategoryIcon = (category) => {
     const icons = {
-      concerts: '🎵',
-      workshops: '🛠️',
-      webinars: '💻',
-      meetups: '🤝',
-      conferences: '🎪'
+      concert: '🎵',
+      workshop: '🛠️',
+      webinar: '💻',
+      meetup: '🤝',
+      conference: '🎪',
+      other: '📅'
     };
     return icons[category] || '📅';
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-400">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button 
+            onClick={fetchDashboardData}
+            className="btn-primary"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { organizer, recentEvents, analyticsData, topEvents, stats } = dashboardData;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -103,7 +110,7 @@ const OrganizerDashboardOverview = () => {
             </p>
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
-            <Link to="/organizer/create-event" className="btn-primary">
+            <Link to="/organizer/events" className="btn-primary">
               Create Event
             </Link>
             <Link to="/organizer/analytics" className="btn-secondary">
@@ -113,13 +120,37 @@ const OrganizerDashboardOverview = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Using Real Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Events', value: organizer.totalEvents, icon: '🎪', color: 'blue', change: '+2 this month' },
-          { label: 'Active Events', value: organizer.activeEvents, icon: '🔴', color: 'green', change: 'Currently running' },
-          { label: 'Total Earnings', value: formatCurrency(organizer.totalEarnings), icon: '💰', color: 'yellow', change: `+${formatCurrency(organizer.thisMonthEarnings)} this month` },
-          { label: 'Total Attendees', value: organizer.totalAttendees.toLocaleString(), icon: '👥', color: 'purple', change: `+${organizer.thisMonthAttendees} this month` }
+          { 
+            label: 'Total Events', 
+            value: organizer.totalEvents, 
+            icon: '🎪', 
+            color: 'blue', 
+            change: `${stats.thisMonthBookings} bookings this month` 
+          },
+          { 
+            label: 'Active Events', 
+            value: organizer.activeEvents, 
+            icon: '🔴', 
+            color: 'green', 
+            change: 'Currently running' 
+          },
+          { 
+            label: 'Total Earnings', 
+            value: formatCurrency(organizer.totalEarnings), 
+            icon: '💰', 
+            color: 'yellow', 
+            change: `+${formatCurrency(organizer.thisMonthEarnings)} this month` 
+          },
+          { 
+            label: 'Total Attendees', 
+            value: organizer.totalAttendees.toLocaleString(), 
+            icon: '👥', 
+            color: 'purple', 
+            change: `+${organizer.thisMonthAttendees} this month` 
+          }
         ].map((stat, index) => (
           <div
             key={stat.label}
@@ -140,7 +171,7 @@ const OrganizerDashboardOverview = () => {
         ))}
       </div>
 
-      {/* Recent Events & Quick Analytics */}
+      {/* Recent Events & Analytics - Using Real Data */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Events */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
@@ -173,7 +204,7 @@ const OrganizerDashboardOverview = () => {
           </div>
         </div>
 
-        {/* Quick Analytics */}
+        {/* Performance Overview - Using Real Data */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">Performance Overview</h2>
@@ -204,7 +235,7 @@ const OrganizerDashboardOverview = () => {
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
         <h3 className="text-xl font-bold text-white mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Link to="/organizer/create-event" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+          <Link to="/organizer/events" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
             <span className="text-2xl mr-4">➕</span>
             <div>
               <h4 className="font-semibold text-white">Create Event</h4>

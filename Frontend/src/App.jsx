@@ -20,6 +20,8 @@ import OrganizerDashboardLayout from './pages/organizer/OrganizerDashboardLayout
 import OrganizerDashboardOverview from './pages/organizer/OrganizerDashboardOverview';
 import OrganizerEvents from './pages/organizer/OrganizerEvents';
 import OrganizerEarnings from './pages/organizer/OrganizerEarnings';
+import OrganizerAnalytics from './pages/organizer/OrganizerAnalytics';
+import IndividualEventsAnalytics from './pages/organizer/IndividualEventsAnalytics'
 import ProtectedRoute from './components/ProtectedRoutes';
 import EventDetailsPage from './pages/Events/EventsDetailsPage';
 import { AuthProvider } from './context/AuthContext';
@@ -84,11 +86,10 @@ function App() {
               <Route
                 path="analytics"
                 element={
-                  <div className="text-center py-16">
-                    <h2 className="text-white text-2xl">Analytics - Coming Soon!</h2>
-                  </div>
+                  <OrganizerAnalytics />
                 }
               />
+              <Route path='analytics/:eventId' element={<IndividualEventsAnalytics />} />
               <Route
                 path="profile"
                 element={
