@@ -243,6 +243,8 @@ export const bookingAPI = {
   getBookingById: (id) => get(`/bookings/${id}`),
   cancelBooking: (id) => patch(`/bookings/${id}/cancel`),
   getAllBookings: (params = {}) => get('/bookings', params),
+  getEventAttendees: (eventId) => get(`/bookings/event/${eventId}/attendees`),
+
   downloadTicket: async (bookingId) => {
     try {
       const response = await api.get(`/bookings/${bookingId}/download-ticket`, {
@@ -278,11 +280,16 @@ export const paymentAPI = {
 };
 
 // CHAT APIs (for real-time messaging)
+// Add to your existing api.js
 export const chatAPI = {
-  sendMessage: (data) => post('/chat/messages', data),
-  getMessages: (userId, params = {}) => get(`/chat/messages/${userId}`, params),
-  getChatUsers: () => get('/chat/users'),
-  markAsRead: (userId) => patch(`/chat/messages/${userId}/read`),
+  getConversations: () => get('/chat/conversations'),
+  getMessages: (conversationId, params = {}) => 
+    get(`/chat/conversations/${conversationId}/messages`, params),
+  sendMessage: (conversationId, data) => 
+    post(`/chat/conversations/${conversationId}/messages`, data),
+  startConversation: (eventId) => 
+    post('/chat/conversations/start', { eventId }),
+
 };
 
 // ADMIN APIs

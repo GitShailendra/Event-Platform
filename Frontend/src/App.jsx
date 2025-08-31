@@ -25,12 +25,16 @@ import IndividualEventsAnalytics from './pages/organizer/IndividualEventsAnalyti
 import ProtectedRoute from './components/ProtectedRoutes';
 import EventDetailsPage from './pages/Events/EventsDetailsPage';
 import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';
 import './App.css';
 import BookingPage from './pages/Events/BookingPage';
 import BookingSuccess from './pages/Events/BookingSuccess';
 import UserBookings from './pages/user/UserBookings';
 import UserBookingsDetails from './pages/user/UserBookinngsDetails'
 import OrganizerProfile from './pages/organizer/OrganizerProfile';
+import OrganizerChat from './pages/organizer/OrganizerChat';
+import UserChat from './pages/user/UserChat';
+
 const PublicLayout = ({ children }) => (
   <>
     <Navbar />
@@ -44,82 +48,74 @@ const PublicLayout = ({ children }) => (
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App bg-black min-h-screen flex flex-col">
-          <Routes>
-            {/* Public routes with Navbar and Footer */}
-            <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
-            <Route path="/events" element={<PublicLayout><EventPage /></PublicLayout>} />
-            <Route path="/events/:id" element={<ProtectedRoute><EventDetailsPage /></ProtectedRoute>} />
-            <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
-            <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
-            <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
-            <Route path="/signup" element={<PublicLayout><SignupPage /></PublicLayout>} />
-            <Route path='/booking' element={<ProtectedRoute><BookingPage/></ProtectedRoute>}/>
-            <Route path='/booking-success' element={<ProtectedRoute><BookingSuccess/></ProtectedRoute>}/>
-            {/* User Dashboard Routes (protected) */}
-            <Route
-              path="/user"
-              element={
-                <ProtectedRoute allowedRoles={['user']}>
-                  <UserLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              {/* <Route path="upcoming-events" element={<UpcomingEvents />} /> */}
-              {/* <Route path="past-events" element={<PastEvents />} /> */}
-              <Route path='bookings' element={<UserBookings/>}/>
-              <Route path='bookings/:id' element={<UserBookingsDetails/>}/>
-              <Route path="favorites" element={<Favorites />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-
-            {/* Organizer Dashboard Routes (protected) */}
-            <Route
-              path="/organizer"
-              element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <OrganizerDashboardLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<OrganizerDashboardOverview />} />
-              <Route path="dashboard" element={<OrganizerDashboardOverview />} />
-              <Route path="events" element={<OrganizerEvents />} />
-              {/* <Route path="earnings" element={<OrganizerEarnings />} /> */}
+      <ChatProvider>
+        <Router>
+          <div className="App bg-black min-h-screen flex flex-col">
+            <Routes>
+              {/* Public routes with Navbar and Footer */}
+              <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
+              <Route path="/events" element={<PublicLayout><EventPage /></PublicLayout>} />
+              <Route path="/events/:id" element={<ProtectedRoute><EventDetailsPage /></ProtectedRoute>} />
+              <Route path="/about" element={<PublicLayout><AboutPage /></PublicLayout>} />
+              <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
+              <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+              <Route path="/signup" element={<PublicLayout><SignupPage /></PublicLayout>} />
+              <Route path='/booking' element={<ProtectedRoute><BookingPage/></ProtectedRoute>}/>
+              <Route path='/booking-success' element={<ProtectedRoute><BookingSuccess/></ProtectedRoute>}/>
+              
+              {/* User Dashboard Routes (protected) */}
               <Route
-                path="analytics"
+                path="/user"
                 element={
-                  <OrganizerAnalytics />
+                  <ProtectedRoute allowedRoles={['user']}>
+                    <UserLayout />
+                  </ProtectedRoute>
                 }
-              />
-              <Route path='analytics/:eventId' element={<IndividualEventsAnalytics />} />
-              <Route
-                path="profile"
-                element={
-                  <OrganizerProfile/>
-                }
-              />
-            </Route>
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path='bookings' element={<UserBookings/>}/>
+                <Route path='bookings/:id' element={<UserBookingsDetails/>}/>
+                <Route path="favorites" element={<Favorites />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="chat" element={<UserChat />} />
+              </Route>
 
-            {/* 404 Route */}
-            <Route
-              path="*"
-              element={
-                <div className="min-h-screen bg-black flex items-center justify-center">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold text-white mb-2">Page Not Found</h2>
-                    <p className="text-gray-400 mb-6">The page you're looking for doesn't exist.</p>
-                    <a href="/" className="btn-primary">Go Home</a>
+              {/* Organizer Dashboard Routes (protected) */}
+              <Route
+                path="/organizer"
+                element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<OrganizerDashboardOverview />} />
+                <Route path="dashboard" element={<OrganizerDashboardOverview />} />
+                <Route path="events" element={<OrganizerEvents />} />
+                <Route path="analytics" element={<OrganizerAnalytics />} />
+                <Route path='analytics/:eventId' element={<IndividualEventsAnalytics />} />
+                <Route path="profile" element={<OrganizerProfile/>} />
+                <Route path="chat" element={<OrganizerChat />} />
+              </Route>
+
+              {/* 404 Route */}
+              <Route
+                path="*"
+                element={
+                  <div className="min-h-screen bg-black flex items-center justify-center">
+                    <div className="text-center">
+                      <h2 className="text-2xl font-bold text-white mb-2">Page Not Found</h2>
+                      <p className="text-gray-400 mb-6">The page you're looking for doesn't exist.</p>
+                      <a href="/" className="btn-primary">Go Home</a>
+                    </div>
                   </div>
-                </div>
-              }
-            />
-          </Routes>
-        </div>
-      </Router>
+                }
+              />
+            </Routes>
+          </div>
+        </Router>
+      </ChatProvider>
     </AuthProvider>
   );
 }

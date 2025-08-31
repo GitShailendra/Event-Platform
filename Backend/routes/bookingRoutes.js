@@ -17,7 +17,7 @@ router.get('/my-bookings', bookingController.getUserBookings);
 router.get('/:id', bookingController.getBookingById);
 router.patch('/:id/cancel', bookingController.cancelBooking);
 router.get('/:id/download-ticket', ticketController.downloadTicket);
-
+router.get('/event/:eventId/attendees', bookingController.getAttendeeBooking);
 // Admin routes
 router.get('/', bookingController.getAllBookings);
 

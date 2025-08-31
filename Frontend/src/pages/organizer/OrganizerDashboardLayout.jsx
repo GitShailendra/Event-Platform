@@ -21,7 +21,7 @@ const OrganizerDashboardLayout = () => {
     { id: 'dashboard', name: 'Dashboard', icon: '📊', path: '/organizer/dashboard' },
     { id: 'events', name: 'My Events', icon: '🎪', path: '/organizer/events' },
     { id: 'analytics', name: 'Analytics', icon: '📈', path: '/organizer/analytics' },
-    // { id: 'earnings', name: 'Earnings', icon: '💰', path: '/organizer/earnings' },
+    { id: 'chat', name: 'Chat', icon: '💰', path: '/organizer/chat' },
     { id: 'profile', name: 'Profile', icon: '👤', path: '/organizer/profile' }
   ];
 

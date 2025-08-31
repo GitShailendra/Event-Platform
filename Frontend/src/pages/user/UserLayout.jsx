@@ -22,7 +22,7 @@ const UserLayout = () => {
     // { id: 'upcoming-events', name: 'Upcoming Events', icon: '📅', path: '/user/upcoming-events' },
     // { id: 'past-events', name: 'Past Events', icon: '📚', path: '/user/past-events' },
     { id: 'user-bookings', name: 'User Bookings', icon: '📚', path: '/user/bookings' },
-    // { id: 'favorites', name: 'Favorites', icon: '❤️', path: '/user/favorites' },
+    { id: 'chat', name: 'Chat', icon: '❤️', path: '/user/chat' },
     // { id: 'tickets', name: 'My Tickets', icon: '🎫', path: '/user/tickets' },
     { id: 'profile', name: 'Profile Settings', icon: '👤', path: '/user/profile' }
   ];

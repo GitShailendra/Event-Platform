@@ -544,3 +544,59 @@ exports.getAllBookings = async (req, res) => {
     });
   }
 };
+exports.getAttendeeBooking = async (req,res)=>{
+  try {
+    const { eventId } = req.params;
+    const organizerId = req.user.id;
+
+    // First verify that the event exists and the logged-in user is the organizer
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Event not found' 
+      });
+    }
+
+    // Check if the logged-in user is the organizer of this event
+    if (event.createdBy.toString() !== organizerId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied: You are not the organizer of this event' 
+      });
+    }
+
+    // Fetch all confirmed bookings for this event
+    const attendees = await Booking.find({
+      event: eventId,
+      status: 'confirmed'
+    })
+    .populate('user', 'firstName lastName profileImage email username')
+    .populate('event', 'title date location')
+    .sort({ createdAt: -1 });
+
+    // Remove duplicate users (in case someone has multiple bookings)
+    const uniqueAttendees = [];
+    const seenUserIds = new Set();
+
+    attendees.forEach(booking => {
+      if (!seenUserIds.has(booking.user._id.toString())) {
+        seenUserIds.add(booking.user._id.toString());
+        uniqueAttendees.push(booking);
+      }
+    });
+
+    res.json({
+      success: true,
+      data: uniqueAttendees,
+      total: uniqueAttendees.length
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success:false,
+      message:'Failed to get Attendee',
+      error: error.message
+    })
+  }
+}
