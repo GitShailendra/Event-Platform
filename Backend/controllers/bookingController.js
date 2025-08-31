@@ -1,163 +1,339 @@
+// controllers/bookingController.js
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Razorpay = require('razorpay');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+
+// Initialize Razorpay instance
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 // Create new booking
 exports.createBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { eventId, quantity, attendeeInfo } = req.body;
+    const userId = req.user.id;
 
-    const event = await Event.findById(eventId);
+    // Validate event exists and has available seats
+    const event = await Event.findById(eventId).session(session);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
     }
 
+    // Check if event is still bookable
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    if (eventDate < now) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot book tickets for past events'
+      });
+    }
+
+    // Check available seats
     if (event.availableSeats < quantity) {
-      return res.status(400).json({ message: 'Not enough available seats' });
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: `Only ${event.availableSeats} seats available`
+      });
     }
 
+    // Calculate total amount
     const totalAmount = event.price * quantity;
 
+    // Create booking
     const booking = new Booking({
-      user: req.userId,
+      user: userId,
       event: eventId,
       quantity,
       totalAmount,
-      attendeeInfo
+      attendeeInfo,
+      status: totalAmount === 0 ? 'confirmed' : 'pending',
+      paymentInfo: {
+        paymentMethod: totalAmount === 0 ? 'free' : 'razorpay',
+        paymentStatus: totalAmount === 0 ? 'completed' : 'pending'
+      }
     });
 
-    const savedBooking = await booking.save();
-    
-    // Update available seats
-    await Event.findByIdAndUpdate(eventId, {
-      $inc: { availableSeats: -quantity }
-    });
+    await booking.save({ session });
 
-    await savedBooking.populate(['user', 'event']);
+    // For free events, immediately update seats and confirm booking
+    if (totalAmount === 0) {
+      await Event.findByIdAndUpdate(
+        eventId,
+        { 
+          $inc: { 
+            availableSeats: -quantity,
+            totalEarnings: 0
+          }
+        },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+
+    // Populate booking for response
+    await booking.populate([
+      { path: 'user', select: 'firstName lastName email' },
+      { path: 'event', select: 'title date location price images' }
+    ]);
 
     res.status(201).json({
-      message: 'Booking created successfully',
-      booking: savedBooking
+      success: true,
+      message: totalAmount === 0 ? 'Registration successful!' : 'Booking created successfully',
+      data: {
+        booking,
+        requiresPayment: totalAmount > 0,
+        nextStep: totalAmount === 0 ? 'confirmed' : 'payment'
+      }
     });
+
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    await session.abortTransaction();
+    console.error('Create Booking Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create booking',
+      error: error.message
+    });
+  } finally {
+    session.endSession();
   }
 };
 
-// Process payment
-exports.processPayment = async (req, res) => {
+// Create Razorpay order for payment
+exports.createPaymentOrder = async (req, res) => {
   try {
-    const { bookingId, paymentMethodId } = req.body;
+    const { bookingId } = req.body;
+    const userId = req.user.id;
 
-    const booking = await Booking.findById(bookingId).populate('event');
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      user: userId
+    }).populate('event');
+
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    // Create payment intent with Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.totalAmount * 100, // Amount in cents
-      currency: 'usd',
-      payment_method: paymentMethodId,
-      confirm: true,
-      return_url: `${process.env.FRONTEND_URL}/booking-success`
-    });
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is not in pending state'
+      });
+    }
 
-    // Update booking with payment info
-    booking.paymentInfo = {
-      paymentId: paymentIntent.id,
-      paymentMethod: 'stripe',
-      transactionId: paymentIntent.charges.data[0]?.id,
-      paymentStatus: paymentIntent.status === 'succeeded' ? 'completed' : 'failed'
+    if (booking.totalAmount === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No payment required for free events'
+      });
+    }
+
+    // Create Razorpay order
+    const orderOptions = {
+      amount: Math.round(booking.totalAmount * 100), // Amount in paise
+      currency: 'INR',
+      receipt: booking.bookingReference,
+      payment_capture: 1, // Auto capture payment
+      notes: {
+        bookingId: booking._id.toString(),
+        eventTitle: booking.event.title,
+        quantity: booking.quantity.toString()
+      }
     };
-    
-    booking.status = paymentIntent.status === 'succeeded' ? 'confirmed' : 'pending';
+
+    const razorpayOrder = await razorpay.orders.create(orderOptions);
+
+    // Update booking with order details
+    booking.paymentInfo.paymentId = razorpayOrder.id;
     await booking.save();
 
     res.json({
-      message: 'Payment processed successfully',
-      booking,
-      paymentIntent: {
-        id: paymentIntent.id,
-        status: paymentIntent.status
+      success: true,
+      data: {
+        orderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        booking: booking,
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID
       }
     });
+
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Create Payment Order Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create payment order',
+      error: error.message
+    });
   }
 };
 
-// Get user bookings
-exports.getUserBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find({ user: req.userId })
-      .populate('event', 'title date location price images')
-      .sort({ createdAt: -1 });
+// Verify Razorpay payment and confirm booking
+exports.verifyPayment = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    res.json(bookings);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Get booking by ID
-exports.getBookingById = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('user', 'firstName lastName email')
-      .populate('event');
+    const { 
+      bookingId, 
+      razorpay_order_id, 
+      razorpay_payment_id, 
+      razorpay_signature 
+    } = req.body;
+    const userId = req.user.id;
+
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      user: userId
+    }).session(session);
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    // Check if user owns this booking or is admin
-    if (booking.user._id.toString() !== req.userId && req.userRole !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to view this booking' });
+    // Verify payment signature
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment signature'
+      });
     }
 
-    res.json(booking);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    // Update booking with payment details
+    booking.paymentInfo = {
+      paymentId: razorpay_order_id,
+      paymentMethod: 'razorpay',
+      transactionId: razorpay_payment_id,
+      paymentStatus: 'completed'
+    };
+    booking.status = 'confirmed';
+    await booking.save({ session });
 
-// Cancel booking
-exports.cancelBooking = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+    // Update event seats and earnings
+    await Event.findByIdAndUpdate(
+      booking.event,
+      { 
+        $inc: { 
+          availableSeats: -booking.quantity,
+          totalEarnings: booking.totalAmount
+        }
+      },
+      { session }
+    );
 
-    if (booking.user.toString() !== req.userId) {
-      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
-    }
+    await session.commitTransaction();
 
-    booking.status = 'cancelled';
-    await booking.save();
+    // Populate booking for response
+    await booking.populate([
+      { path: 'user', select: 'firstName lastName email' },
+      { path: 'event', select: 'title date location price images' }
+    ]);
 
-    // Restore available seats
-    await Event.findByIdAndUpdate(booking.event, {
-      $inc: { availableSeats: booking.quantity }
+    res.json({
+      success: true,
+      message: 'Payment verified and booking confirmed!',
+      data: { booking }
     });
 
-    res.json({ message: 'Booking cancelled successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    await session.abortTransaction();
+    console.error('Verify Payment Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Payment verification failed',
+      error: error.message
+    });
+  } finally {
+    session.endSession();
   }
 };
 
-// Get all bookings (Admin only)
-exports.getAllBookings = async (req, res) => {
+// Handle payment failure
+exports.handlePaymentFailure = async (req, res) => {
   try {
+    const { bookingId, error_description } = req.body;
+    const userId = req.user.id;
+
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      user: userId
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    booking.paymentInfo.paymentStatus = 'failed';
+    booking.status = 'pending'; // Keep booking pending for retry
+    await booking.save();
+
+    res.json({
+      success: false,
+      message: 'Payment failed',
+      data: { 
+        booking,
+        error: error_description,
+        canRetry: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Handle Payment Failure Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to handle payment failure',
+      error: error.message
+    });
+  }
+};
+
+// Get user's bookings
+exports.getUserBookings = async (req, res) => {
+  try {
+    const userId = req.user.id;
     const { page = 1, limit = 10, status } = req.query;
-    const query = status ? { status } : {};
+
+    let query = { user: userId };
+    if (status) {
+      query.status = status;
+    }
 
     const bookings = await Booking.find(query)
-      .populate('user', 'firstName lastName email')
-      .populate('event', 'title date location')
+      .populate({
+        path: 'event',
+        select: 'title date location price images category status'
+      })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -165,12 +341,206 @@ exports.getAllBookings = async (req, res) => {
     const total = await Booking.countDocuments(query);
 
     res.json({
-      bookings,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
+      success: true,
+      data: {
+        bookings,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalBookings: total
+        }
+      }
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get User Bookings Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+      error: error.message
+    });
+  }
+};
+
+// Get booking by ID
+exports.getBookingById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    const booking = await Booking.findById(id)
+      .populate('user', 'firstName lastName email')
+      .populate('event');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    // Check authorization
+    if (booking.user._id.toString() !== userId && userRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view this booking'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { booking }
+    });
+
+  } catch (error) {
+    console.error('Get Booking Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch booking',
+      error: error.message
+    });
+  }
+};
+
+// Cancel booking and process refund if applicable
+exports.cancelBooking = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const booking = await Booking.findOne({
+      _id: id,
+      user: userId
+    }).populate('event').session(session);
+
+    if (!booking) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
+    }
+
+    // Check cancellation policy (24 hours before event)
+    const eventDate = new Date(booking.event.date);
+    const now = new Date();
+    const hoursDiff = (eventDate - now) / (1000 * 60 * 60);
+
+    if (hoursDiff < 24) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel booking less than 24 hours before the event'
+      });
+    }
+
+    // Update booking status
+    booking.status = 'cancelled';
+    await booking.save({ session });
+
+    // Restore event seats
+    await Event.findByIdAndUpdate(
+      booking.event._id,
+      { 
+        $inc: { 
+          availableSeats: booking.quantity,
+          totalEarnings: -booking.totalAmount
+        }
+      },
+      { session }
+    );
+
+    // Process refund if payment was completed
+    if (booking.paymentInfo.paymentStatus === 'completed' && booking.totalAmount > 0) {
+      try {
+        const refund = await razorpay.payments.refund(booking.paymentInfo.transactionId, {
+          amount: Math.round(booking.totalAmount * 100), // Amount in paise
+          speed: 'normal',
+          notes: {
+            reason: 'User cancellation',
+            bookingId: booking._id.toString()
+          }
+        });
+
+        booking.paymentInfo.paymentStatus = 'refunded';
+        booking.paymentInfo.refundId = refund.id;
+        await booking.save({ session });
+
+      } catch (refundError) {
+        console.error('Refund Error:', refundError);
+        // Continue with cancellation even if refund fails
+      }
+    }
+
+    await session.commitTransaction();
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      data: { booking }
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Cancel Booking Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel booking',
+      error: error.message
+    });
+  } finally {
+    session.endSession();
+  }
+};
+
+// Get all bookings (Admin only)
+exports.getAllBookings = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, eventId } = req.query;
+
+    let query = {};
+    if (status) query.status = status;
+    if (eventId) query.event = eventId;
+
+    const bookings = await Booking.find(query)
+      .populate('user', 'firstName lastName email')
+      .populate('event', 'title date location price')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Booking.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        bookings,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalBookings: total
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get All Bookings Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+      error: error.message
+    });
   }
 };

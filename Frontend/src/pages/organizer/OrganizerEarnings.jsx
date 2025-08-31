@@ -1,74 +1,31 @@
-import React, { useState } from 'react';
+// Updated OrganizerEarnings.js
+import React, { useState, useEffect } from 'react';
+import { organizerEarningsAPI } from '../../api';
 
 const OrganizerEarnings = () => {
   const [timeFilter, setTimeFilter] = useState('thisMonth');
+  const [earningsData, setEarningsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock earnings data
-  const earningsData = {
-    totalEarnings: 245000,
-    thisMonthEarnings: 45000,
-    pendingPayouts: 15000,
-    totalTransactions: 89
-  };
+  // Fetch real earnings data
+  useEffect(() => {
+    fetchEarningsData();
+  }, [timeFilter]);
 
-  const transactions = [
-    {
-      id: 'TXN-001',
-      eventTitle: 'React Advanced Workshop',
-      date: '2025-08-24',
-      amount: 22500,
-      attendees: 45,
-      status: 'completed',
-      payoutDate: '2025-08-31'
-    },
-    {
-      id: 'TXN-002',
-      eventTitle: 'AI Summit Conference',
-      date: '2025-08-20',
-      amount: 48000,
-      attendees: 120,
-      status: 'completed',
-      payoutDate: '2025-08-27'
-    },
-    {
-      id: 'TXN-003',
-      eventTitle: 'JavaScript Bootcamp',
-      date: '2025-08-15',
-      amount: 17500,
-      attendees: 35,
-      status: 'pending',
-      payoutDate: '2025-08-29'
-    },
-    {
-      id: 'TXN-004',
-      eventTitle: 'Startup Pitch Night',
-      date: '2025-08-10',
-      amount: 8000,
-      attendees: 80,
-      status: 'completed',
-      payoutDate: '2025-08-17'
-    },
-    {
-      id: 'TXN-005',
-      eventTitle: 'Web Development Masterclass',
-      date: '2025-08-05',
-      amount: 32000,
-      attendees: 64,
-      status: 'completed',
-      payoutDate: '2025-08-12'
+  const fetchEarningsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await organizerEarningsAPI.getEarningsOverview(timeFilter);
+      console.log('Fetched earnings data:', response.data);
+      setEarningsData(response.data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch earnings data');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const monthlyEarnings = [
-    { month: 'Jan', earnings: 28000 },
-    { month: 'Feb', earnings: 35000 },
-    { month: 'Mar', earnings: 42000 },
-    { month: 'Apr', earnings: 38000 },
-    { month: 'May', earnings: 45000 },
-    { month: 'Jun', earnings: 52000 },
-    { month: 'Jul', earnings: 48000 },
-    { month: 'Aug', earnings: 45000 }
-  ];
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -94,23 +51,45 @@ const OrganizerEarnings = () => {
     return badges[status] || badges.pending;
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const transactionDate = new Date(transaction.date);
-    const now = new Date();
-    
-    switch (timeFilter) {
-      case 'thisWeek':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return transactionDate >= weekAgo;
-      case 'thisMonth':
-        return transactionDate.getMonth() === now.getMonth() && transactionDate.getFullYear() === now.getFullYear();
-      case 'last3Months':
-        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-        return transactionDate >= threeMonthsAgo;
-      default:
-        return true;
-    }
-  });
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-400">Loading earnings data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">💰</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Earnings</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button onClick={fetchEarningsData} className="btn-primary">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { 
+    totalEarnings, 
+    thisMonthEarnings, 
+    pendingPayouts, 
+    totalTransactions, 
+    thisMonthTransactions, 
+    transactions, 
+    monthlyEarnings,
+    earningsGrowth,
+    summary
+  } = earningsData;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -131,36 +110,36 @@ const OrganizerEarnings = () => {
         </div>
       </div>
 
-      {/* Earnings Summary Cards */}
+      {/* Earnings Summary Cards - Using Real Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { 
             label: 'Total Earnings', 
-            value: formatCurrency(earningsData.totalEarnings), 
+            value: formatCurrency(totalEarnings), 
             icon: '💰', 
             color: 'green',
-            change: '+12% from last month'
+            change: `${earningsGrowth >= 0 ? '+' : ''}${earningsGrowth}% from last month`
           },
           { 
             label: 'This Month', 
-            value: formatCurrency(earningsData.thisMonthEarnings), 
+            value: formatCurrency(thisMonthEarnings), 
             icon: '📈', 
             color: 'blue',
-            change: '+8% from last month'
+            change: `${thisMonthTransactions} transactions`
           },
           { 
             label: 'Pending Payouts', 
-            value: formatCurrency(earningsData.pendingPayouts), 
+            value: formatCurrency(pendingPayouts), 
             icon: '⏳', 
             color: 'yellow',
-            change: 'Next payout: Aug 31'
+            change: `Next payout: ${formatDate(summary?.nextPayoutDate)}`
           },
           { 
             label: 'Total Transactions', 
-            value: earningsData.totalTransactions, 
+            value: totalTransactions, 
             icon: '🧾', 
             color: 'purple',
-            change: '5 this month'
+            change: `${thisMonthTransactions} this month`
           }
         ].map((stat, index) => (
           <div
@@ -182,16 +161,16 @@ const OrganizerEarnings = () => {
         ))}
       </div>
 
-      {/* Monthly Earnings Chart (Simple Bar Representation) */}
+      {/* Monthly Earnings Chart - Using Real Data */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white">Monthly Earnings Trend</h2>
-          <div className="text-sm text-gray-400">Last 8 months</div>
+          <div className="text-sm text-gray-400">Last {monthlyEarnings?.length || 8} months</div>
         </div>
         <div className="flex items-end justify-between space-x-2">
-          {monthlyEarnings.map((data, index) => {
+          {monthlyEarnings?.map((data, index) => {
             const maxEarnings = Math.max(...monthlyEarnings.map(m => m.earnings));
-            const height = (data.earnings / maxEarnings) * 100;
+            const height = maxEarnings > 0 ? (data.earnings / maxEarnings) * 100 : 0;
             
             return (
               <div key={data.month} className="flex flex-col items-center flex-1">
@@ -214,7 +193,7 @@ const OrganizerEarnings = () => {
         </div>
       </div>
 
-      {/* Transactions Table */}
+      {/* Transactions Table - Using Real Data */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-6 border-b border-gray-700">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -254,14 +233,14 @@ const OrganizerEarnings = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredTransactions.map(transaction => {
+              {transactions?.map(transaction => {
                 const statusBadge = getStatusBadge(transaction.status);
                 return (
                   <tr key={transaction.id} className="hover:bg-gray-700 transition-colors">
                     <td className="px-6 py-4">
                       <div>
                         <div className="font-medium text-white">{transaction.eventTitle}</div>
-                        <div className="text-gray-400 text-sm">ID: {transaction.id}</div>
+                        <div className="text-gray-400 text-sm">ID: {transaction.id.slice(-8)}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300">
@@ -290,7 +269,7 @@ const OrganizerEarnings = () => {
       </div>
 
       {/* Empty State */}
-      {filteredTransactions.length === 0 && (
+      {(!transactions || transactions.length === 0) && (
         <div className="text-center py-16">
           <div className="text-6xl mb-4 animate-float">💰</div>
           <h2 className="text-2xl font-bold text-white mb-2">No Transactions Found</h2>

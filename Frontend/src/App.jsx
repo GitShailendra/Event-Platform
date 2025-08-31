@@ -26,7 +26,11 @@ import ProtectedRoute from './components/ProtectedRoutes';
 import EventDetailsPage from './pages/Events/EventsDetailsPage';
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
-
+import BookingPage from './pages/Events/BookingPage';
+import BookingSuccess from './pages/Events/BookingSuccess';
+import UserBookings from './pages/user/UserBookings';
+import UserBookingsDetails from './pages/user/UserBookinngsDetails'
+import OrganizerProfile from './pages/organizer/OrganizerProfile';
 const PublicLayout = ({ children }) => (
   <>
     <Navbar />
@@ -51,7 +55,8 @@ function App() {
             <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
             <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
             <Route path="/signup" element={<PublicLayout><SignupPage /></PublicLayout>} />
-
+            <Route path='/booking' element={<ProtectedRoute><BookingPage/></ProtectedRoute>}/>
+            <Route path='/booking-success' element={<ProtectedRoute><BookingSuccess/></ProtectedRoute>}/>
             {/* User Dashboard Routes (protected) */}
             <Route
               path="/user"
@@ -63,10 +68,11 @@ function App() {
             >
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="upcoming-events" element={<UpcomingEvents />} />
-              <Route path="past-events" element={<PastEvents />} />
+              {/* <Route path="upcoming-events" element={<UpcomingEvents />} /> */}
+              {/* <Route path="past-events" element={<PastEvents />} /> */}
+              <Route path='bookings' element={<UserBookings/>}/>
+              <Route path='bookings/:id' element={<UserBookingsDetails/>}/>
               <Route path="favorites" element={<Favorites />} />
-              <Route path="tickets" element={<Tickets />} />
               <Route path="profile" element={<Profile />} />
             </Route>
 
@@ -82,7 +88,7 @@ function App() {
               <Route index element={<OrganizerDashboardOverview />} />
               <Route path="dashboard" element={<OrganizerDashboardOverview />} />
               <Route path="events" element={<OrganizerEvents />} />
-              <Route path="earnings" element={<OrganizerEarnings />} />
+              {/* <Route path="earnings" element={<OrganizerEarnings />} /> */}
               <Route
                 path="analytics"
                 element={
@@ -93,9 +99,7 @@ function App() {
               <Route
                 path="profile"
                 element={
-                  <div className="text-center py-16">
-                    <h2 className="text-white text-2xl">Organizer Profile - Coming Soon!</h2>
-                  </div>
+                  <OrganizerProfile/>
                 }
               />
             </Route>

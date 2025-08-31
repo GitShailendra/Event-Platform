@@ -177,6 +177,25 @@ export const authAPI = {
   updateProfile: (data) => put('/users/profile', data),
   forgotPassword: (email) => post('/users/forgot-password', { email }),
   resetPassword: (token, password) => post('/users/reset-password', { token, password }),
+  getCurrentProfile: () => get('/users/profile/current'),
+  updateCurrentProfile: (data) => put('/users/profile/current', data),
+  changePassword: (data) => post('/users/change-password', data),
+  downloadUserData: () => {
+    return api.get('/users/download-data', { responseType: 'blob' })
+      .then(response => {
+        // Create download link
+        const blob = new Blob([response.data], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `my_data_${Date.now()}.json`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        return { success: true };
+      });
+  }
 };
 
 // Updated EVENT APIs with FormData support
@@ -217,11 +236,37 @@ export const eventAPI = {
 // BOOKING APIs
 export const bookingAPI = {
   createBooking: (data) => post('/bookings', data),
-  getUserBookings: () => get('/bookings/my-bookings'),
+  createPaymentOrder: (data) => post('/bookings/create-order', data),
+  verifyPayment: (data) => post('/bookings/verify-payment', data),
+  handlePaymentFailure: (data) => post('/bookings/payment-failure', data),
+  getUserBookings: (params = {}) => get('/bookings/my-bookings', params),
   getBookingById: (id) => get(`/bookings/${id}`),
   cancelBooking: (id) => patch(`/bookings/${id}/cancel`),
-  getAllBookings: (params = {}) => get('/bookings', params), // Admin only
+  getAllBookings: (params = {}) => get('/bookings', params),
+  downloadTicket: async (bookingId) => {
+    try {
+      const response = await api.get(`/bookings/${bookingId}/download-ticket`, {
+        responseType: 'blob' // Important for file downloads
+      });
+      
+      // Create download link
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Ticket_${bookingId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      return { success: true };
+    } catch (error) {
+      throw error;
+    }
+  }
 };
+
 
 // PAYMENT APIs
 export const paymentAPI = {
@@ -294,6 +339,15 @@ export const analyticsAPI = {
 // Add to your api.js file
 export const organizerDashboardAPI = {
   getDashboardOverview: () => get('/organizer/dashboard/overview'),
+};
+// Add to your api.js file
+export const organizerEarningsAPI = {
+  getEarningsOverview: (timeFilter) => get('/organizer/earnings/overview', { timeFilter }),
+};
+// Add to your api.js file
+export const userDashboardAPI = {
+  getDashboardOverview: () => get('/user/dashboard/overview'),
+  getUserStats: () => get('/user/dashboard/stats'),
 };
 
 // ===========================================

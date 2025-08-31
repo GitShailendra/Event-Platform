@@ -9,8 +9,10 @@ const userRoutes = require('./routes/userRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
-const organizerDashboardRoutes  = require('./routes/organizerDashboard')
-// Add your chat and admin routes as needed
+const organizerDashboardRoutes = require('./routes/organizerDashboard');
+const organizerEarningsRoutes = require('./routes/organizerEarningsRoutes');
+const userDashboardRoutes = require('./routes/userDashboardRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // For real-time chat with Socket.io
 const { Server } = require('socket.io');
@@ -29,6 +31,9 @@ app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/organizer/dashboard', organizerDashboardRoutes);
+app.use('/api/organizer/earnings', organizerEarningsRoutes);
+app.use('/api/user/dashboard', userDashboardRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Example test route
 app.get('/', (req, res) => {
@@ -41,14 +46,51 @@ connectDB();
 // Setup Socket.io for real-time chat
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
-    methods: ['GET', 'POST']
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
+// Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-  // Define events, emit/receive messages, etc.
+  console.log('User connected:', socket.id);
+
+  // Join conversation room
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(conversationId);
+    console.log(`User ${socket.id} joined conversation: ${conversationId}`);
+  });
+
+  // Leave conversation room
+  socket.on('leaveConversation', (conversationId) => {
+    socket.leave(conversationId);
+    console.log(`User ${socket.id} left conversation: ${conversationId}`);
+  });
+
+  // Handle typing status
+  socket.on('typing', ({ conversationId, isTyping, userName }) => {
+    socket.to(conversationId).emit('userTyping', { isTyping, userName });
+  });
+
+  // Handle message sending (real-time broadcast)
+  socket.on('sendMessage', (messageData) => {
+    socket.to(messageData.conversationId).emit('newMessage', messageData);
+  });
+
+  // Handle user online status
+  socket.on('userOnline', (userId) => {
+    socket.userId = userId;
+    socket.broadcast.emit('userOnline', userId);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    if (socket.userId) {
+      socket.broadcast.emit('userOffline', socket.userId);
+    }
+  });
 });
 
 app.set('io', io);

@@ -256,7 +256,7 @@ const OrganizerDashboardOverview = () => {
               <p className="text-gray-400 text-sm">Performance data</p>
             </div>
           </Link>
-          <Link to="/organizer/earnings" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+          <Link to="/organizer/analytics" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
             <span className="text-2xl mr-4">💰</span>
             <div>
               <h4 className="font-semibold text-white">Earnings</h4>

@@ -1,44 +1,35 @@
-import React from 'react';
+// Updated Dashboard.jsx component
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { userDashboardAPI } from '../../api';
 
 const Dashboard = () => {
-  // Mock data
-  const user = {
-    name: 'John Doe',
-    totalBookings: 12,
-    upcomingEvents: 3,
-    completedEvents: 9
-  };
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const recentBookings = [
-    {
-      id: 1,
-      eventTitle: 'React Workshop 2025',
-      date: '2025-09-15',
-      time: '10:00 AM',
-      price: 2500,
-      status: 'confirmed',
-      category: 'workshops'
-    },
-    {
-      id: 2,
-      eventTitle: 'AI Summit Conference',
-      date: '2025-10-20',
-      time: '9:00 AM',
-      price: 4000,
-      status: 'confirmed',
-      category: 'conferences'
-    },
-    {
-      id: 3,
-      eventTitle: 'Photography Masterclass',
-      date: '2025-11-05',
-      time: '2:00 PM',
-      price: 1800,
-      status: 'pending',
-      category: 'workshops'
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await userDashboardAPI.getDashboardOverview();
+      
+      if (response.success) {
+        setDashboardData(response.data);
+      } else {
+        setError('Failed to fetch dashboard data');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -67,14 +58,52 @@ const Dashboard = () => {
 
   const getCategoryIcon = (category) => {
     const icons = {
-      concerts: '🎵',
-      workshops: '🛠️',
-      webinars: '💻',
-      meetups: '🤝',
-      conferences: '🎪'
+      concert: '🎵',
+      workshop: '🛠️',
+      webinar: '💻',
+      meetup: '🤝',
+      conference: '🎪',
+      other: '📅'
     };
     return icons[category] || '📅';
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-400">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Error Loading Dashboard</h2>
+          <p className="text-gray-400 mb-6">{error}</p>
+          <button 
+            onClick={fetchDashboardData}
+            className="btn-primary"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return null;
+  }
+
+  const { user, recentBookings } = dashboardData;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -97,12 +126,27 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Using Real Data */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Total Bookings', value: user.totalBookings, icon: '🎫', color: 'blue' },
-          { label: 'Upcoming Events', value: user.upcomingEvents, icon: '📅', color: 'green' },
-          { label: 'Completed Events', value: user.completedEvents, icon: '✅', color: 'purple' }
+          { 
+            label: 'Total Bookings', 
+            value: user.totalBookings, 
+            icon: '🎫', 
+            color: 'blue' 
+          },
+          { 
+            label: 'Upcoming Events', 
+            value: user.upcomingEvents, 
+            icon: '📅', 
+            color: 'green' 
+          },
+          { 
+            label: 'Completed Events', 
+            value: user.completedEvents, 
+            icon: '✅', 
+            color: 'purple' 
+          }
         ].map((stat, index) => (
           <div
             key={stat.label}
@@ -120,35 +164,47 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Recent Bookings */}
+      {/* Recent Bookings - Using Real Data */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white">Recent Bookings</h2>
-          <Link to="/user/upcoming-events" className="text-blue-400 hover:text-blue-300 text-sm">
+          <Link to="/user/bookings" className="text-blue-400 hover:text-blue-300 text-sm">
             View All
           </Link>
         </div>
-        <div className="space-y-4">
-          {recentBookings.map(booking => (
-            <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-              <div className="flex items-center space-x-4">
-                <div className="text-2xl">{getCategoryIcon(booking.category)}</div>
-                <div>
-                  <h3 className="font-semibold text-white">{booking.eventTitle}</h3>
-                  <p className="text-gray-400 text-sm">
-                    {formatDate(booking.date)} at {booking.time}
-                  </p>
+        
+        {recentBookings.length > 0 ? (
+          <div className="space-y-4">
+            {recentBookings.map(booking => (
+              <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                <div className="flex items-center space-x-4">
+                  <div className="text-2xl">{getCategoryIcon(booking.category)}</div>
+                  <div>
+                    <h3 className="font-semibold text-white">{booking.eventTitle}</h3>
+                    <p className="text-gray-400 text-sm">
+                      {booking.date ? formatDate(booking.date) : 'Date not available'} 
+                      {booking.time && ` at ${booking.time}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-white">{formatCurrency(booking.price)}</p>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(booking.status)}`}>
+                    {booking.status}
+                  </span>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-white">{formatCurrency(booking.price)}</p>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(booking.status)}`}>
-                  {booking.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-2">🎫</div>
+            <p className="text-gray-400">No bookings yet</p>
+            <Link to="/events" className="text-blue-400 hover:text-blue-300 text-sm">
+              Browse events to get started
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -162,11 +218,11 @@ const Dashboard = () => {
               <p className="text-gray-400 text-sm">Find new events to attend</p>
             </div>
           </Link>
-          <Link to="/user/tickets" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+          <Link to="/user/bookings" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
             <span className="text-2xl mr-4">🎫</span>
             <div>
-              <h4 className="font-semibold text-white">My Tickets</h4>
-              <p className="text-gray-400 text-sm">View and manage tickets</p>
+              <h4 className="font-semibold text-white">My Bookings</h4>
+              <p className="text-gray-400 text-sm">View and manage bookings</p>
             </div>
           </Link>
           <Link to="/user/profile" className="flex items-center p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">

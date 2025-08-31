@@ -19,10 +19,11 @@ const UserLayout = () => {
 
   const sidebarItems = [
     { id: 'dashboard', name: 'Overview', icon: '📊', path: '/user/dashboard' },
-    { id: 'upcoming-events', name: 'Upcoming Events', icon: '📅', path: '/user/upcoming-events' },
-    { id: 'past-events', name: 'Past Events', icon: '📚', path: '/user/past-events' },
-    { id: 'favorites', name: 'Favorites', icon: '❤️', path: '/user/favorites' },
-    { id: 'tickets', name: 'My Tickets', icon: '🎫', path: '/user/tickets' },
+    // { id: 'upcoming-events', name: 'Upcoming Events', icon: '📅', path: '/user/upcoming-events' },
+    // { id: 'past-events', name: 'Past Events', icon: '📚', path: '/user/past-events' },
+    { id: 'user-bookings', name: 'User Bookings', icon: '📚', path: '/user/bookings' },
+    // { id: 'favorites', name: 'Favorites', icon: '❤️', path: '/user/favorites' },
+    // { id: 'tickets', name: 'My Tickets', icon: '🎫', path: '/user/tickets' },
     { id: 'profile', name: 'Profile Settings', icon: '👤', path: '/user/profile' }
   ];
 
