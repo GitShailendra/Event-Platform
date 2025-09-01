@@ -120,12 +120,7 @@ const UserLayout = () => {
             >
               Browse Events
             </Link>
-            <Link
-              to="/help"
-              className="w-full btn-secondary text-center py-3 mb-3 block"
-            >
-              Need Help?
-            </Link>
+            
             
             {/* Logout Button */}
             <button

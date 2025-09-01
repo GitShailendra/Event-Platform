@@ -22,9 +22,66 @@ const UserChat = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
+      setError(''); // Clear previous errors
+      
+      console.log('Fetching user conversations...');
       const data = await chatAPI.getConversations();
-      setConversations(data);
+      console.log('API Response:', data);
+
+      // Handle nested response structure if needed
+      let conversationsData;
+      if (data && Array.isArray(data)) {
+        conversationsData = data;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        conversationsData = data.data;
+      } else {
+        console.log('Unexpected response structure:', data);
+        conversationsData = [];
+      }
+
+      // **FIX: Remove duplicate organizers - keep only one conversation per organizer**
+      const uniqueConversations = [];
+      const seenOrganizers = new Set();
+
+      conversationsData.forEach(conversation => {
+        const organizerId = conversation.organizer?._id;
+        if (organizerId && !seenOrganizers.has(organizerId)) {
+          seenOrganizers.add(organizerId);
+          uniqueConversations.push(conversation);
+        }
+      });
+
+      console.log(`Original: ${conversationsData.length}, After deduplication: ${uniqueConversations.length} conversations`);
+      setConversations(uniqueConversations);
+
+      // **FIX: Auto-select conversation after loading**
+      if (uniqueConversations.length > 0) {
+        const savedConversationId = localStorage.getItem('selectedUserConversationId');
+        
+        let conversationToSelect = null;
+        
+        if (savedConversationId) {
+          // Try to find the previously selected conversation
+          conversationToSelect = uniqueConversations.find(conv => conv._id === savedConversationId);
+        }
+        
+        // If no saved conversation found or it doesn't exist, select the first one
+        if (!conversationToSelect) {
+          conversationToSelect = uniqueConversations[0];
+        }
+        
+        if (conversationToSelect) {
+          console.log('Auto-selecting user conversation:', conversationToSelect._id);
+          setSelectedConversation(conversationToSelect);
+          localStorage.setItem('selectedUserConversationId', conversationToSelect._id);
+        }
+      } else {
+        // No conversations available
+        setSelectedConversation(null);
+        localStorage.removeItem('selectedUserConversationId');
+      }
     } catch (err) {
+      console.error('Error fetching user conversations:', err);
       setError(err.message || 'Failed to load conversations');
     } finally {
       setLoading(false);
@@ -34,15 +91,39 @@ const UserChat = () => {
   const handleStartConversation = async (eventId) => {
     try {
       const conversation = await chatAPI.startConversation(eventId);
-      setConversations(prev => [conversation, ...prev]);
+      
+      // **FIX: Update conversations list properly - check for existing organizer**
+      setConversations(prev => {
+        const organizerId = conversation.organizer?._id;
+        const existingIndex = prev.findIndex(conv => conv.organizer?._id === organizerId);
+        
+        if (existingIndex >= 0) {
+          // Update existing conversation with this organizer
+          const updated = [...prev];
+          updated[existingIndex] = conversation;
+          return updated;
+        } else {
+          // Add new conversation with new organizer
+          return [conversation, ...prev];
+        }
+      });
+      
       setSelectedConversation(conversation);
+      localStorage.setItem('selectedUserConversationId', conversation._id);
       setShowStartModal(false);
     } catch (err) {
       alert(err.message || 'Failed to start conversation');
     }
   };
 
+  // **FIX: Update localStorage when conversation is manually selected**
+  const handleConversationSelect = (conversation) => {
+    setSelectedConversation(conversation);
+    localStorage.setItem('selectedUserConversationId', conversation._id);
+  };
+
   const formatLastMessageTime = (date) => {
+    if (!date) return '';
     const now = new Date();
     const messageDate = new Date(date);
     const diff = now - messageDate;
@@ -54,7 +135,7 @@ const UserChat = () => {
   };
 
   const isUserOnline = (userId) => {
-    return onlineUsers.has(userId);
+    return userId && onlineUsers.has(userId);
   };
 
   if (loading) {
@@ -75,7 +156,10 @@ const UserChat = () => {
           <div className="text-6xl mb-4">💬</div>
           <h2 className="text-2xl font-bold text-white mb-2">Chat Error</h2>
           <p className="text-gray-400 mb-6">{error}</p>
-          <button onClick={fetchConversations} className="btn-primary">
+          <button 
+            onClick={fetchConversations} 
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          >
             Try Again
           </button>
         </div>
@@ -97,10 +181,15 @@ const UserChat = () => {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowStartModal(true)}
-              className="btn-primary"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
             >
-              ➕ Start Chat
+              <span>➕</span>
+              <span>Start Chat</span>
             </button>
+            <div className="flex items-center space-x-2 text-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-gray-300">{onlineUsers.size} online</span>
+            </div>
             <span className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-sm">
               {conversations.length} organizers
             </span>
@@ -126,67 +215,76 @@ const UserChat = () => {
                 </p>
                 <button
                   onClick={() => setShowStartModal(true)}
-                  className="btn-primary text-sm"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
                 >
                   Find Events
                 </button>
               </div>
             ) : (
               <div className="divide-y divide-gray-700">
-                {conversations.map((conversation) => (
-                  <div
-                    key={conversation._id}
-                    onClick={() => setSelectedConversation(conversation)}
-                    className={`p-4 cursor-pointer hover:bg-gray-700 transition-colors ${
-                      selectedConversation?._id === conversation._id 
-                        ? 'bg-gray-700 border-r-4 border-blue-500' 
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="relative">
-                        <img
-                          src={conversation.organizer.profileImage || '/default-avatar.png'}
-                          alt={`${conversation.organizer.firstName} ${conversation.organizer.lastName}`}
-                          className="w-12 h-12 rounded-full object-cover"
-                          onError={(e) => {
-                            e.target.src = '/default-avatar.png';
-                          }}
-                        />
-                        {isUserOnline(conversation.organizer._id) && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-gray-800 rounded-full"></div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-white font-medium truncate">
-                            {conversation.organizer.firstName} {conversation.organizer.lastName}
-                          </h4>
-                          {conversation.lastMessage && (
-                            <span className="text-xs text-gray-400">
-                              {formatLastMessageTime(conversation.lastMessageTime)}
-                            </span>
+                {conversations.map((conversation) => {
+                  // Add defensive checks
+                  if (!conversation || !conversation._id || !conversation.organizer) return null;
+                  
+                  return (
+                    <div
+                      key={conversation._id}
+                      onClick={() => handleConversationSelect(conversation)} // **UPDATED: Use new handler**
+                      className={`p-4 cursor-pointer hover:bg-gray-700 transition-colors ${
+                        selectedConversation?._id === conversation._id 
+                          ? 'bg-gray-700 border-r-4 border-blue-500' 
+                          : ''
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="relative">
+                          <img
+                            src={conversation.organizer.profileImage || '/default-avatar.png'}
+                            alt={`${conversation.organizer.firstName || 'Organizer'} ${conversation.organizer.lastName || ''}`}
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.src = '/default-avatar.png';
+                            }}
+                          />
+                          {conversation.organizer._id && isUserOnline(conversation.organizer._id) && (
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-gray-800 rounded-full"></div>
                           )}
                         </div>
                         
-                        <div className="flex items-center space-x-1 mb-2">
-                          <span className="text-xs text-blue-400">📅</span>
-                          <span className="text-xs text-blue-400 truncate">
-                            {conversation.event.title}
-                          </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-white font-medium truncate">
+                              {conversation.organizer.firstName || 'Unknown'} {conversation.organizer.lastName || ''}
+                            </h4>
+                            {conversation.lastMessage && conversation.lastMessageTime && (
+                              <span className="text-xs text-gray-400">
+                                {formatLastMessageTime(conversation.lastMessageTime)}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center space-x-1 mb-2">
+                            <span className="text-xs text-blue-400">📅</span>
+                            <span className="text-xs text-blue-400 truncate">
+                              {conversation.event?.title || 'Event'}
+                            </span>
+                            {/* **NEW: Show indicator if there are multiple events with this organizer** */}
+                            <span className="text-xs text-green-400">
+                              • Multiple events
+                            </span>
+                          </div>
+                          
+                          {conversation.lastMessage && (
+                            <p className="text-sm text-gray-400 truncate">
+                              {conversation.lastMessage.sender?._id === user?.id ? 'You: ' : ''}
+                              {conversation.lastMessage.content}
+                            </p>
+                          )}
                         </div>
-                        
-                        {conversation.lastMessage && (
-                          <p className="text-sm text-gray-400 truncate">
-                            {conversation.lastMessage.sender._id === user.id ? 'You: ' : ''}
-                            {conversation.lastMessage.content}
-                          </p>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -210,7 +308,7 @@ const UserChat = () => {
                 </p>
                 <button
                   onClick={() => setShowStartModal(true)}
-                  className="btn-secondary"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
                   Start New Chat
                 </button>

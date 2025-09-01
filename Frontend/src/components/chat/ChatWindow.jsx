@@ -16,44 +16,61 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
   const isTyping = typingUsers.has(conversation._id);
 
   useEffect(() => {
-    if (conversation) {
+    if (conversation?._id) {
       fetchMessages();
       joinConversation(conversation._id);
     }
 
     return () => {
-      if (conversation) {
+      if (conversation?._id) {
         leaveConversation(conversation._id);
       }
+      // Clear typing timeout on cleanup
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-  }, [conversation]);
+  }, [conversation?._id]);
 
   useEffect(() => {
     if (socket) {
+      const handleNewMessage = (message) => {
+        console.log('Received new message:', message);
+        if (message.conversation === conversation._id) {
+          setMessages(prev => [...prev, message]);
+          if (onConversationUpdate) {
+            onConversationUpdate();
+          }
+        }
+      };
+
       socket.on('newMessage', handleNewMessage);
       return () => socket.off('newMessage', handleNewMessage);
     }
-  }, [socket]);
+  }, [socket, conversation?._id, onConversationUpdate]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const handleNewMessage = (message) => {
-    if (message.conversation === conversation._id) {
-      setMessages(prev => [...prev, message]);
-      onConversationUpdate?.();
-    }
-  };
 
   const fetchMessages = async () => {
     try {
       setLoading(true);
       const data = await chatAPI.getMessages(conversation._id);
       console.log('Fetched messages:', data);
-      setMessages(data);
+      
+      // Handle response structure
+      let messagesData = [];
+      if (Array.isArray(data)) {
+        messagesData = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        messagesData = data.data;
+      }
+      
+      setMessages(messagesData);
     } catch (error) {
       console.error('Error fetching messages:', error);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -63,36 +80,49 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+
     try {
       setSending(true);
-      const messageData = { content: newMessage.trim() };
+      const messageData = { content: messageContent };
       
       const sentMessage = await chatAPI.sendMessage(conversation._id, messageData);
+      console.log('Message sent:', sentMessage);
+      
+      // Add message to local state immediately
       setMessages(prev => [...prev, sentMessage]);
-      setNewMessage('');
-      onConversationUpdate?.();
-
-      // Emit to socket for real-time update
-      if (socket) {
-        socket.emit('sendMessage', {
-          ...sentMessage,
-          conversationId: conversation._id
-        });
+      
+      if (onConversationUpdate) {
+        onConversationUpdate();
       }
+
     } catch (error) {
       console.error('Error sending message:', error);
+      // Restore message in input on error
+      setNewMessage(messageContent);
+      alert('Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
   };
 
   const handleTyping = () => {
-    sendTyping(conversation._id, true);
-    
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      sendTyping(conversation._id, false);
-    }, 1000);
+    if (socket && socket.connected) {
+      sendTyping(conversation._id, true);
+      
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTyping(conversation._id, false);
+      }, 1000);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(e);
+    }
   };
 
   const scrollToBottom = () => {
@@ -152,34 +182,40 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl h-full flex flex-col overflow-hidden animate-fade-in">
       {/* Chat Header */}
-      <div className="p-4 border-b border-gray-700 bg-gray-800">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <img
-              src={chatPartner.profileImage || '/default-avatar.png'}
-              alt={`${chatPartner.firstName} ${chatPartner.lastName}`}
-              className="w-12 h-12 rounded-full object-cover"
-              onError={(e) => {
-                e.target.src = '/default-avatar.png';
-              }}
-            />
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-gray-800 rounded-full"></div>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-white font-semibold text-lg">
-              {chatPartner.firstName} {chatPartner.lastName}
-            </h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-blue-400">📅</span>
-              <span className="text-sm text-blue-400">{conversation.event.title}</span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-green-400">Active</span>
-          </div>
-        </div>
+<div className="p-4 border-b border-gray-700 bg-gray-800">
+  <div className="flex items-center space-x-4">
+    <div className="relative">
+      <img
+        src={chatPartner?.profileImage || '/default-avatar.png'}
+        alt={`${chatPartner?.firstName || 'User'} ${chatPartner?.lastName || ''}`}
+        className="w-12 h-12 rounded-full object-cover"
+        onError={(e) => {
+          e.target.src = '/default-avatar.png';
+        }}
+      />
+      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-gray-800 rounded-full"></div>
+    </div>
+    <div className="flex-1">
+      <h3 className="text-white font-semibold text-lg">
+        {chatPartner?.firstName || 'Unknown'} {chatPartner?.lastName || ''}
+      </h3>
+      <div className="flex items-center space-x-2">
+        <span className="text-xs text-blue-400">📅</span>
+        <span className="text-sm text-blue-400">
+          {conversation.event?.title || 'Event'} 
+          {conversation.events && conversation.events.length > 1 && 
+            ` (+${conversation.events.length - 1} more events)`
+          }
+        </span>
       </div>
+    </div>
+    <div className="flex items-center space-x-2">
+      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+      <span className="text-xs text-green-400">Active</span>
+    </div>
+  </div>
+</div>
+
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-900">
@@ -194,7 +230,7 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
               <div className="text-4xl mb-4">🎪</div>
               <h4 className="text-white font-medium mb-2">Start the conversation</h4>
               <p className="text-gray-400 text-sm">
-                Send your first message about {conversation.event.title}
+                Send your first message about {conversation.event?.title || 'this event'}
               </p>
             </div>
           </div>
@@ -209,22 +245,33 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
                 </div>
                 
                 {dateMessages.map((message, index) => {
-                  const isOwnMessage = message.sender._id === currentUser.id;
+                  // FIXED: Compare sender ID with current user ID properly
+                  // Check if the message sender is the current user
+                  const isOwnMessage = message.sender?._id === currentUser?.id || message.sender?._id === currentUser?._id;
+                  
+                  // Debug logging to help troubleshoot
+                  console.log('Message sender ID:', message.sender?._id);
+                  console.log('Current user ID:', currentUser?.id);
+                  console.log('Is own message:', isOwnMessage);
+                  
                   const showAvatar = index === dateMessages.length - 1 || 
-                    dateMessages[index + 1]?.sender._id !== message.sender._id;
+                    dateMessages[index + 1]?.sender?._id !== message.sender?._id;
                   
                   return (
                     <div
                       key={message._id}
-                      className={`flex items-end space-x-2 ${
-                        isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''
+                      className={`flex items-end space-x-2 mb-4 ${
+                        isOwnMessage 
+                          ? 'flex-row-reverse space-x-reverse justify-start' // Own messages to the right
+                          : 'flex-row justify-start' // Other messages to the left
                       }`}
                     >
+                      {/* Show avatar only for other people's messages */}
                       {!isOwnMessage && (
                         <img
-                          src={message.sender.profileImage || '/default-avatar.png'}
-                          alt={message.sender.firstName}
-                          className={`w-8 h-8 rounded-full object-cover ${
+                          src={message.sender?.profileImage || '/default-avatar.png'}
+                          alt={message.sender?.firstName || 'User'}
+                          className={`w-8 h-8 rounded-full object-cover flex-shrink-0 ${
                             showAvatar ? 'opacity-100' : 'opacity-0'
                           }`}
                           onError={(e) => {
@@ -233,14 +280,15 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
                         />
                       )}
                       
+                      {/* Message bubble */}
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl break-words ${
                           isOwnMessage
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700 text-white border border-gray-600'
-                        } hover:scale-105 transition-transform duration-200`}
+                            ? 'bg-blue-600 text-white rounded-br-md' // Own message style (right side)
+                            : 'bg-gray-700 text-white border border-gray-600 rounded-bl-md' // Other message style (left side)
+                        } hover:scale-[1.02] transition-transform duration-200`}
                       >
-                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                         <span className={`text-xs mt-1 block ${
                           isOwnMessage ? 'text-blue-200' : 'text-gray-400'
                         }`}>
@@ -253,12 +301,13 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
               </div>
             ))}
             
+            {/* Typing indicator */}
             {isTyping && (
-              <div className="flex items-center space-x-2 animate-fade-in">
+              <div className="flex items-center space-x-2 animate-fade-in mb-4">
                 <img
-                  src={chatPartner.profileImage || '/default-avatar.png'}
-                  alt={chatPartner.firstName}
-                  className="w-8 h-8 rounded-full object-cover"
+                  src={chatPartner?.profileImage || '/default-avatar.png'}
+                  alt={chatPartner?.firstName || 'User'}
+                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                   onError={(e) => {
                     e.target.src = '/default-avatar.png';
                   }}
@@ -270,7 +319,7 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
                     <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                   </div>
                   <span className="text-xs text-gray-400">
-                    {chatPartner.firstName} is typing...
+                    {chatPartner?.firstName || 'User'} is typing...
                   </span>
                 </div>
               </div>
@@ -292,7 +341,8 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
                 setNewMessage(e.target.value);
                 handleTyping();
               }}
-              placeholder={`Message ${chatPartner.firstName} about ${conversation.event.title}...`}
+              onKeyPress={handleKeyPress}
+              placeholder={`Message ${chatPartner?.firstName || 'user'} about ${conversation.event?.title || 'this event'}...`}
               className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               disabled={sending}
               maxLength={500}
@@ -329,23 +379,6 @@ const ChatWindow = ({ conversation, currentUser, onConversationUpdate }) => {
             <span>Press Enter to send</span>
             <span>•</span>
             <span>Shift + Enter for new line</span>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-700"
-              title="Add emoji"
-            >
-              😊
-            </button>
-            <button
-              type="button"
-              className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-gray-700"
-              title="Attach file"
-            >
-              📎
-            </button>
           </div>
         </div>
       </form>

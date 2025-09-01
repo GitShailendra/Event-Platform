@@ -2,11 +2,6 @@
 const mongoose = require('mongoose');
 
 const ConversationSchema = new mongoose.Schema({
-  event: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Event', 
-    required: true 
-  },
   organizer: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
@@ -17,6 +12,12 @@ const ConversationSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  event: {
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Event', 
+    required: true 
+    // This now represents the "current context" event, not necessarily the only event
+  },
   lastMessage: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message'
@@ -26,7 +27,7 @@ const ConversationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Ensure one conversation per event-participant pair
-ConversationSchema.index({ event: 1, participant: 1 }, { unique: true });
+// Updated index: ensure one conversation per organizer-participant pair
+ConversationSchema.index({ organizer: 1, participant: 1 }, { unique: true });
 
 module.exports = mongoose.model('Conversation', ConversationSchema);

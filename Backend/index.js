@@ -56,6 +56,14 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Join user to their personal room
+  socket.on('userOnline', (userId) => {
+    socket.userId = userId;
+    socket.join(`user_${userId}`);
+    socket.broadcast.emit('userOnline', userId);
+    console.log(`User ${userId} joined personal room`);
+  });
+
   // Join conversation room
   socket.on('joinConversation', (conversationId) => {
     socket.join(conversationId);
@@ -70,18 +78,18 @@ io.on('connection', (socket) => {
 
   // Handle typing status
   socket.on('typing', ({ conversationId, isTyping, userName }) => {
-    socket.to(conversationId).emit('userTyping', { isTyping, userName });
+    console.log('Typing event:', { conversationId, isTyping, userName });
+    socket.to(conversationId).emit('userTyping', { 
+      isTyping, 
+      userName, 
+      conversationId 
+    });
   });
 
   // Handle message sending (real-time broadcast)
   socket.on('sendMessage', (messageData) => {
+    console.log('Broadcasting message:', messageData);
     socket.to(messageData.conversationId).emit('newMessage', messageData);
-  });
-
-  // Handle user online status
-  socket.on('userOnline', (userId) => {
-    socket.userId = userId;
-    socket.broadcast.emit('userOnline', userId);
   });
 
   // Handle disconnect

@@ -22,9 +22,12 @@ export const ChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const newSocket = io('http://localhost:5000', {
+      console.log('Initializing socket connection for user:', user.id);
+      
+      const newSocket = io( 'http://localhost:5000', {
         withCredentials: true,
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        forceNew: true
       });
 
       newSocket.on('connect', () => {
@@ -44,10 +47,12 @@ export const ChatProvider = ({ children }) => {
       });
 
       newSocket.on('userOnline', (userId) => {
+        console.log('User came online:', userId);
         setOnlineUsers(prev => new Set([...prev, userId]));
       });
 
       newSocket.on('userOffline', (userId) => {
+        console.log('User went offline:', userId);
         setOnlineUsers(prev => {
           const newSet = new Set(prev);
           newSet.delete(userId);
@@ -56,6 +61,7 @@ export const ChatProvider = ({ children }) => {
       });
 
       newSocket.on('userTyping', ({ isTyping, userName, conversationId }) => {
+        console.log('User typing event:', { isTyping, userName, conversationId });
         setTypingUsers(prev => {
           const newMap = new Map(prev);
           if (isTyping) {
@@ -67,43 +73,53 @@ export const ChatProvider = ({ children }) => {
         });
 
         // Clear typing after 3 seconds if no update
-        setTimeout(() => {
-          setTypingUsers(prev => {
-            const newMap = new Map(prev);
-            if (newMap.get(conversationId) === userName) {
-              newMap.delete(conversationId);
-            }
-            return newMap;
-          });
-        }, 3000);
+        if (isTyping) {
+          setTimeout(() => {
+            setTypingUsers(prev => {
+              const newMap = new Map(prev);
+              if (newMap.get(conversationId) === userName) {
+                newMap.delete(conversationId);
+              }
+              return newMap;
+            });
+          }, 3000);
+        }
+      });
+
+      // Handle incoming messages
+      newSocket.on('newMessage', (message) => {
+        console.log('Received new message from socket:', message);
       });
 
       setSocket(newSocket);
 
       return () => {
+        console.log('Cleaning up socket connection');
         newSocket.disconnect();
       };
     }
   }, [user]);
 
   const joinConversation = (conversationId) => {
-    if (socket && socket.connected) {
+    if (socket && socket.connected && conversationId) {
+      console.log('Joining conversation:', conversationId);
       socket.emit('joinConversation', conversationId);
     }
   };
 
   const leaveConversation = (conversationId) => {
-    if (socket && socket.connected) {
+    if (socket && socket.connected && conversationId) {
+      console.log('Leaving conversation:', conversationId);
       socket.emit('leaveConversation', conversationId);
     }
   };
 
   const sendTyping = (conversationId, isTyping) => {
-    if (socket && socket.connected && user) {
+    if (socket && socket.connected && user && conversationId) {
       socket.emit('typing', {
         conversationId,
         isTyping,
-        userName: user.firstName
+        userName: user.firstName || user.username
       });
     }
   };

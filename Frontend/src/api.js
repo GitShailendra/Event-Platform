@@ -280,17 +280,68 @@ export const paymentAPI = {
 };
 
 // CHAT APIs (for real-time messaging)
-// Add to your existing api.js
 export const chatAPI = {
-  getConversations: () => get('/chat/conversations'),
-  getMessages: (conversationId, params = {}) => 
-    get(`/chat/conversations/${conversationId}/messages`, params),
-  sendMessage: (conversationId, data) => 
-    post(`/chat/conversations/${conversationId}/messages`, data),
-  startConversation: (eventId) => 
-    post('/chat/conversations/start', { eventId }),
-
+  getConversations: async () => {
+    try {
+      const response = await get('/chat/conversations');
+      return response;
+    } catch (error) {
+      console.error('Error in getConversations:', error);
+      throw error;
+    }
+  },
+  
+  getMessages: async (conversationId, params = {}) => {
+    try {
+      const response = await get(`/chat/conversations/${conversationId}/messages`, params);
+      return response;
+    } catch (error) {
+      console.error('Error in getMessages:', error);
+      throw error;
+    }
+  },
+  
+  sendMessage: async (conversationId, data) => {
+    try {
+      const response = await post(`/chat/conversations/${conversationId}/messages`, data);
+      return response;
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      throw error;
+    }
+  },
+  
+  startConversation: async (eventId) => {
+    try {
+      const response = await post('/chat/conversations/start', { eventId });
+      return response;
+    } catch (error) {
+      console.error('Error in startConversation:', error);
+      throw error;
+    }
+  },
+  
+  startOrganizerConversation: async (eventId, attendeeId) => {
+    try {
+      const response = await post('/chat/conversations/start-organizer', { eventId, attendeeId });
+      return response;
+    } catch (error) {
+      console.error('Error in startOrganizerConversation:', error);
+      throw error;
+    }
+  },
+  
+  markMessagesAsRead: async (conversationId) => {
+    try {
+      const response = await patch(`/chat/conversations/${conversationId}/read`);
+      return response;
+    } catch (error) {
+      console.error('Error in markMessagesAsRead:', error);
+      throw error;
+    }
+  }
 };
+
 
 // ADMIN APIs
 export const adminAPI = {
