@@ -2,11 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const AdminDashboardOverview = () => {
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(
+    {
+     stats: {
+          totalUsers: 12547,
+          totalOrganizers: 342,
+          pendingVerifications: 23,
+          totalEvents: 1856,
+          activeEvents: 89,
+          totalRevenue: 2847500,
+          thisMonthRevenue: 485600,
+          thisMonthUsers: 1247,
+          thisMonthEvents: 156
+        },
+        recentActivities: [
+          { id: 1, type: 'user_signup', user: 'John Doe', action: 'signed up', time: '2 minutes ago' },
+          { id: 2, type: 'event_created', user: 'Tech Events Ltd.', action: 'created new event', time: '15 minutes ago' },
+          { id: 3, type: 'organizer_verified', user: 'Sarah Wilson', action: 'got verified', time: '1 hour ago' },
+          { id: 4, type: 'event_published', user: 'Mumbai Meetups', action: 'published event', time: '2 hours ago' },
+          { id: 5, type: 'payment_received', user: 'Concert Pro', action: 'received payment', time: '3 hours ago' }
+        ],
+        pendingOrganizers: [
+          { id: 1, name: 'Alex Johnson', company: 'EventCorp', email: 'alex@eventcorp.com', submitted: '2024-01-15', documents: 3 },
+          { id: 2, name: 'Maria Garcia', company: 'Summit Events', email: 'maria@summit.com', submitted: '2024-01-14', documents: 2 },
+          { id: 3, name: 'David Kim', company: 'Digital Conferences', email: 'david@digital.com', submitted: '2024-01-13', documents: 4 }
+        ],
+        systemHealth: {
+          serverStatus: 'healthy',
+          databaseStatus: 'healthy',
+          paymentGateway: 'healthy',
+          emailService: 'warning',
+          lastBackup: '2024-01-15 03:00 AM'
+        } 
+    }
+  );
   const [loading, setLoading] = useState(false);
-
+   
+ 
   // Dummy data - replace with API calls later
   useEffect(() => {
+    console.log("Fetching admin dashboard data...");
     // Simulate loading
     setLoading(true);
     setTimeout(() => {
@@ -81,7 +116,7 @@ const AdminDashboardOverview = () => {
       </div>
     );
   }
-
+  console.log(dashboardData);
   const { stats, recentActivities, pendingOrganizers, systemHealth } = dashboardData;
 
   return (

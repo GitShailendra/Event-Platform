@@ -75,7 +75,10 @@ const LoginPage = () => {
       // Navigate based on user role
       if (userRole === 'organizer') {
         navigate('/organizer/dashboard', { replace: true });
-      } else {
+      }else if (userRole === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      }
+       else {
         // Default to user dashboard for 'user' role or any other role
         navigate('/user/dashboard', { replace: true });
       }

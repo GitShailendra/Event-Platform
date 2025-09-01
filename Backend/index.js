@@ -13,7 +13,7 @@ const organizerDashboardRoutes = require('./routes/organizerDashboard');
 const organizerEarningsRoutes = require('./routes/organizerEarningsRoutes');
 const userDashboardRoutes = require('./routes/userDashboardRoutes');
 const chatRoutes = require('./routes/chatRoutes');
-
+const adminRoutes = require('./routes/adminRoute')
 // For real-time chat with Socket.io
 const { Server } = require('socket.io');
 
@@ -34,7 +34,7 @@ app.use('/api/organizer/dashboard', organizerDashboardRoutes);
 app.use('/api/organizer/earnings', organizerEarningsRoutes);
 app.use('/api/user/dashboard', userDashboardRoutes);
 app.use('/api/chat', chatRoutes);
-
+app.use('/api/admin', adminRoutes);
 // Example test route
 app.get('/', (req, res) => {
   res.send('API is running...');

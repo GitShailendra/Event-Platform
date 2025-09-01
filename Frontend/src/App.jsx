@@ -35,6 +35,11 @@ import OrganizerProfile from './pages/organizer/OrganizerProfile';
 import OrganizerChat from './pages/organizer/OrganizerChat';
 import UserChat from './pages/user/UserChat';
 
+import AdminDashboardLayout from './pages/admin/AdminDashboardLayout'
+import AdminDashboardOverview from './pages/admin/AdminDashboardOverview';
+import AdminUsers from './pages/admin/AdminUserManagement';
+import AdminEvents from './pages/admin/EventMangement';
+import AdminOrganizerManagement from './pages/admin/OrganizerManagement'
 const PublicLayout = ({ children }) => (
   <>
     <Navbar />
@@ -98,7 +103,16 @@ function App() {
                 <Route path="profile" element={<OrganizerProfile/>} />
                 <Route path="chat" element={<OrganizerChat />} />
               </Route>
-
+                {/* Admin Dashboards Routes */}
+                <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboardLayout />
+                  </ProtectedRoute>}>
+                  <Route index element={<AdminDashboardOverview />} />
+                  <Route path="dashboard" element={<AdminDashboardOverview />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="events" element={<AdminEvents />} />
+                  <Route path="organizers" element={<AdminOrganizerManagement />} />
+                </Route>
               {/* 404 Route */}
               <Route
                 path="*"
