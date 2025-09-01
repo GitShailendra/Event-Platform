@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../api';
@@ -10,7 +10,9 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-
+  useEffect(()=>{
+    window.scrollTo(0,0);
+  },[])
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -233,30 +235,7 @@ const LoginPage = () => {
               )}
             </button>
 
-            {/* Divider */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-600" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Social Login */}
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {socialLogins.map((provider) => (
-                <button
-                  key={provider.name}
-                  type="button"
-                  className={`w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-lg bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 transition-colors ${provider.color}`}
-                >
-                  <span className="text-xl">{provider.icon}</span>
-                </button>
-              ))}
-            </div>
+            
           </form>
         </div>
 

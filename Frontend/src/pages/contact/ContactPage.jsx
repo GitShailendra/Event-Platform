@@ -110,14 +110,7 @@ const ContactPage = () => {
               Have questions about EventHub? We're here to help! Reach out to our friendly team for support, 
               partnerships, or just to say hello.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
-              <button className="btn-primary text-lg px-8 py-4">
-                Start Live Chat
-              </button>
-              <button className="btn-secondary text-lg px-8 py-4">
-                Schedule a Call
-              </button>
-            </div>
+            
           </div>
         </div>
       </section>
@@ -409,12 +402,7 @@ const ContactPage = () => {
             ))}
           </div>
           
-          <div className="text-center mt-12">
-            <p className="text-gray-300 mb-4">Can't find what you're looking for?</p>
-            <button className="btn-secondary">
-              View All FAQs
-            </button>
-          </div>
+          
         </div>
       </section>
     </div>

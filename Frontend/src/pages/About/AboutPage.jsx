@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AboutPage = () => {
+  const navigate = useNavigate();
   const features = [
     {
       icon: '🎪',
@@ -92,7 +94,9 @@ const AboutPage = () => {
       color: 'from-pink-600 to-blue-600'
     }
   ];
-
+  useEffect(()=>{
+    window.scrollTo(0, 0);
+  },[])
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Hero Section */}
@@ -108,7 +112,7 @@ const AboutPage = () => {
               Join millions of people creating unforgettable experiences worldwide.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-scale-in">
-              <button className="btn-primary text-lg px-8 py-4">
+              <button className="btn-primary text-lg px-8 py-4" onClick={() => navigate('/signup')}>
                 Start Your Journey
               </button>
               <button className="btn-secondary text-lg px-8 py-4">
@@ -353,10 +357,10 @@ const AboutPage = () => {
               Start your journey today and see the difference we can make.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 hover:scale-105">
+              <button className="bg-white text-blue-600 hover:bg-gray-100 font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 hover:scale-105" onClick={() => navigate('/signup')}>
                 Get Started Free
               </button>
-              <button className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 hover:scale-105">
+              <button className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 hover:scale-105" onClick={() => navigate('/contact')}>
                 Contact Sales
               </button>
             </div>

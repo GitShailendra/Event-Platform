@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -6,21 +6,13 @@ const Footer = () => {
   const [subscribed, setSubscribed] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  const handleSubscribe = (e) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail('');
-      setTimeout(() => setSubscribed(false), 3000);
-    }
-  };
+
 
   const footerSections = {
     quickLinks: [
       { name: 'Browse Events', path: '/events', icon: '🎪' },
       { name: 'Create Account', path: '/signup', icon: '👤' },
       { name: 'About Us', path: '/about', icon: '📖' },
-      { name: 'How It Works', path: '/how-it-works', icon: '❓' }
     ],
     organizers: [
       { name: 'Create Event', path: '/create-event', icon: '➕' },
@@ -177,42 +169,7 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Newsletter Subscription */}
-      <div className="border-t border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="mb-4 md:mb-0">
-              <h4 className="text-lg font-semibold mb-2 text-white flex items-center">
-                <span className="mr-2">📧</span>
-                Stay Updated
-              </h4>
-              <p className="text-gray-300">Get the latest events and updates delivered to your inbox.</p>
-            </div>
-            <div className="flex-shrink-0">
-              {subscribed ? (
-                <div className="flex items-center space-x-2 text-green-400">
-                  <span className="animate-scale-in">✓</span>
-                  <span className="font-medium">Successfully subscribed!</span>
-                </div>
-              ) : (
-                <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="input min-w-[250px]"
-                  />
-                  <button type="submit" className="btn btn-primary whitespace-nowrap">
-                    Subscribe
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Bottom Footer */}
       <div className="border-t border-gray-700">

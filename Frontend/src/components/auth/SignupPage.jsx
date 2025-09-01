@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI, handleApiError } from '../../api';
@@ -22,7 +22,9 @@ const SignupPage = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
-
+  useEffect(()=>{
+    window.scrollTo(0, 0);
+  },[])
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -489,32 +491,7 @@ const SignupPage = () => {
               )}
             </button>
 
-            {/* Divider */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-600" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-gray-800 text-gray-400">Or sign up with</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Social Login */}
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {socialLogins.map((provider) => (
-                <button
-                  key={provider.name}
-                  type="button"
-                  onClick={() => handleSocialLogin(provider.name)}
-                  disabled={isLoading}
-                  className={`w-full inline-flex justify-center py-3 px-4 border border-gray-600 rounded-lg bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 transition-colors disabled:opacity-50 ${provider.color}`}
-                >
-                  <span className="text-xl">{provider.icon}</span>
-                </button>
-              ))}
-            </div>
+            
           </form>
         </div>
       </div>
