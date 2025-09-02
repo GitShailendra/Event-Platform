@@ -22,7 +22,13 @@ const app = express();
 const server = http.createServer(app);
 
 // Middleware
-app.use(cors());
+app.use(cors(
+  {
+    origin: process.env.FRONTEND_URL || "https://leafy-selkie-fcc70b.netlify.app",
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true
+  }
+));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
