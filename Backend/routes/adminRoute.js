@@ -15,4 +15,5 @@ router.patch('/users/:id/reject-organizer', auth,isAdmin, adminController.reject
 router.get('/dashboard/stats', auth,isAdmin, adminController.getDashboardStats);
 // View all events
 router.get('/events', auth,isAdmin, adminController.getAllEvents);
+router.get('/contact-queries', auth,isAdmin, adminController.getAllContactQueries);
 module.exports = router;

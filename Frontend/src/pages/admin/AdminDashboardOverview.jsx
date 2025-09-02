@@ -9,50 +9,54 @@ const AdminDashboardOverview = () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const statsResponse = await adminAPI.getDashboardStats();
-        const usersResponse = await adminAPI.getAllUsers();
+  try {
+    setLoading(true);
+    const statsResponse = await adminAPI.getDashboardStats();
+    const usersResponse = await adminAPI.getAllUsers();
 
-        const pendingOrganizers = usersResponse.filter(
-          user => !user.isOrganizer && user.role === 'user' && user.pendingVerification === true
-        );
+    // Handle both array and object responses
+    const users = Array.isArray(usersResponse) ? usersResponse : usersResponse.users || [];
 
-        setDashboardData({
-          stats: {
-            totalUsers: statsResponse.users,
-            totalOrganizers: usersResponse.filter(u => u.role === 'organizer').length,
-            pendingVerifications: pendingOrganizers.length,
-            totalEvents: statsResponse.events,
-            activeEvents: 0, // Extend backend if needed
-            totalRevenue: statsResponse.totalRevenue,
-            thisMonthRevenue: 0,
-            thisMonthUsers: 0,
-            thisMonthEvents: 0
-          },
-          recentActivities: [], // Optional: fetch if available
-          pendingOrganizers: pendingOrganizers.map(org => ({
-            id: org._id,
-            name: `${org.firstName} ${org.lastName}`,
-            company: org.company || 'N/A',
-            email: org.email,
-            submitted: org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A',
-            documents: 0 // Update if documents data is available
-          })),
-          systemHealth: {
-            serverStatus: 'healthy',
-            databaseStatus: 'healthy',
-            paymentGateway: 'healthy',
-            emailService: 'healthy',
-            lastBackup: 'N/A',
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard data', error);
-      } finally {
-        setLoading(false);
+    const pendingOrganizers = users.filter(
+      user => !user.isOrganizer && user.role === 'user' && user.pendingVerification === true
+    );
+
+    setDashboardData({
+      stats: {
+        totalUsers: statsResponse.users || users.length,
+        totalOrganizers: users.filter(u => u.role === 'organizer').length,
+        pendingVerifications: pendingOrganizers.length,
+        totalEvents: statsResponse.events || 0,
+        activeEvents: 0, // Extend backend if needed
+        totalRevenue: statsResponse.totalRevenue || 0,
+        thisMonthRevenue: 0,
+        thisMonthUsers: 0,
+        thisMonthEvents: 0
+      },
+      recentActivities: [], // Optional: fetch if available
+      pendingOrganizers: pendingOrganizers.map(org => ({
+        id: org._id,
+        name: `${org.firstName} ${org.lastName}`,
+        company: org.company || 'N/A',
+        email: org.email,
+        submitted: org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A',
+        documents: 0 // Update if documents data is available
+      })),
+      systemHealth: {
+        serverStatus: 'healthy',
+        databaseStatus: 'healthy',
+        paymentGateway: 'healthy',
+        emailService: 'healthy',
+        lastBackup: 'N/A',
       }
-    };
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard data', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
     fetchDashboardData();
   }, []);

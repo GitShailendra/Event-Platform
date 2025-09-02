@@ -356,6 +356,7 @@ export const adminAPI = {
   getAllEvents: () => get('/admin/events'),
   getDashboardStats: () => get('/admin/dashboard/stats'),
   getAllUsers: (params = {}) => get('/admin/users', params),
+  getAllContactQueries: (params = {}) => get('/admin/contact-queries', params),
 };
 
 // FILE UPLOAD APIs

@@ -40,6 +40,7 @@ import AdminDashboardOverview from './pages/admin/AdminDashboardOverview';
 import AdminUsers from './pages/admin/AdminUserManagement';
 import AdminEvents from './pages/admin/EventMangement';
 import AdminOrganizerManagement from './pages/admin/OrganizerManagement'
+import AdminContactComponent from './pages/admin/AdminContactQueries';
 const PublicLayout = ({ children }) => (
   <>
     <Navbar />
@@ -112,6 +113,7 @@ function App() {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="events" element={<AdminEvents />} />
                   <Route path="organizers" element={<AdminOrganizerManagement />} />
+                  <Route path= "contacts" element={<AdminContactComponent/>}/>
                 </Route>
               {/* 404 Route */}
               <Route

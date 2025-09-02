@@ -2,7 +2,7 @@ const User = require('../models/User');
 const Event = require('../models/Event');
 const Booking = require('../models/Booking');
 const Analytics = require('../models/Analytics');
-
+const Contact = require('../models/Contact');
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
@@ -111,3 +111,11 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 
+exports.getAllContactQueries = async (req,res)=>{
+  try {
+    const queries = await Contact.find().sort({ createdAt: -1 });
+    res.status(200).json(queries);
+  } catch (error) {
+    res.status(500).json({ message: 'Error getting contact queries', error });
+  }
+}

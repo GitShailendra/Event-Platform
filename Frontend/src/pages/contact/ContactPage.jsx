@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-
+import {contactAPI} from '../../api'
 const ContactPage = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     phone: '',
     subject: '',
     message: '',
-    category: 'general'
+    category: 'General Inquiry'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -20,25 +20,27 @@ const ContactPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      setFormData({
-        name: '',
+    try {
+       e.preventDefault();
+       setIsSubmitting(true);
+       const response = await contactAPI.submitContactForm(formData);
+       console.log('Contact form submitted successfully:', response);
+       setFormData({
+        fullName: '',
         email: '',
         phone: '',
         subject: '',
         message: '',
-        category: 'general'
-      });
-      
-      // Reset success message after 5 seconds
-      setTimeout(() => setIsSubmitted(false), 5000);
-    }, 1500);
+        category: 'General Inquiry'
+       })
+       setIsSubmitting(false);
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setIsSubmitting(false);
+
+    }
+   
+    
   };
 
   const contactInfo = [
@@ -178,8 +180,8 @@ const ContactPage = () => {
                       <input
                         type="text"
                         id="name"
-                        name="name"
-                        value={formData.name}
+                        name="fullName"
+                        value={formData.fullName}
                         onChange={handleChange}
                         required
                         className="w-full py-3 px-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors focus:ring-2 focus:ring-blue-500/20"
@@ -230,11 +232,12 @@ const ContactPage = () => {
                         onChange={handleChange}
                         className="w-full py-3 px-4 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors focus:ring-2 focus:ring-blue-500/20"
                       >
-                        <option value="general" className="bg-gray-700">General Inquiry</option>
-                        <option value="support" className="bg-gray-700">Technical Support</option>
-                        <option value="partnership" className="bg-gray-700">Partnership</option>
-                        <option value="press" className="bg-gray-700">Press & Media</option>
-                        <option value="billing" className="bg-gray-700">Billing</option>
+                        <option value="General Inquiry" className="bg-gray-700">General Inquiry</option>
+                        <option value="Technical Support" className="bg-gray-700">Technical Support</option>
+                        <option value="Partnership" className="bg-gray-700">Partnership</option>
+                        <option value="Press & Media" className="bg-gray-700">Press & Media</option>
+                        <option value="Billing" className="bg-gray-700">Billing</option>
+                        <option value="Other" className="bg-gray-700">Other</option>
                       </select>
                     </div>
                   </div>
