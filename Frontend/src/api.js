@@ -1,7 +1,7 @@
 // src/api.js
 import axios from 'axios';
 
-const API_URL =  'http://localhost:5000/api';
+const API_URL =  'https://event-platform-ktlv.onrender.com/api';
 
 // Create axios instance with base configuration
 const api = axios.create({  

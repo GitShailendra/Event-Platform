@@ -24,7 +24,7 @@ export const ChatProvider = ({ children }) => {
     if (user) {
       console.log('Initializing socket connection for user:', user.id);
       
-      const newSocket = io( 'http://localhost:5000', {
+      const newSocket = io( 'https://event-platform-ktlv.onrender.com', {
         withCredentials: true,
         transports: ['websocket', 'polling'],
         forceNew: true
