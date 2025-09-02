@@ -1,73 +1,57 @@
 import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../api'; // Adjust path as needed
 
 const EventsManagement = () => {
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
 
-  // Dummy data
+  // Fetch real events data
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setEvents([
-        {
-          id: 1,
-          title: 'Tech Conference 2024',
-          organizer: 'Tech Events Ltd.',
-          organizerEmail: 'john@techevents.com',
-          category: 'Technology',
-          date: '2024-02-15',
-          time: '10:00 AM',
-          location: 'Mumbai Convention Center',
-          status: 'active',
-          attendees: 150,
-          maxAttendees: 200,
-          ticketPrice: 2500,
-          revenue: 375000,
-          description: 'Annual technology conference featuring latest trends',
-          createdAt: '2024-01-10'
-        },
-        {
-          id: 2,
-          title: 'Music Festival Mumbai',
-          organizer: 'Concert King',
-          organizerEmail: 'mike@concertking.com',
-          category: 'Music',
-          date: '2024-03-20',
-          time: '6:00 PM',
-          location: 'Oval Maidan, Mumbai',
-          status: 'published',
-          attendees: 45,
-          maxAttendees: 500,
-          ticketPrice: 1500,
-          revenue: 67500,
-          description: 'Live music festival with multiple artists',
-          createdAt: '2024-01-12'
-        },
-        {
-          id: 3,
-          title: 'Startup Networking Event',
-          organizer: 'EventPro Solutions',
-          organizerEmail: 'sarah@eventpro.com',
-          category: 'Business',
-          date: '2024-01-25',
-          time: '7:00 PM',
-          location: 'WeWork BKC',
-          status: 'completed',
-          attendees: 80,
-          maxAttendees: 100,
-          ticketPrice: 500,
-          revenue: 40000,
-          description: 'Networking event for startup enthusiasts',
-          createdAt: '2024-01-05'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await adminAPI.getAllEvents();
+        console.log('Fetched events:', response);
+        
+        // Map events to frontend format
+        const mappedEvents = response.map(event => ({
+          id: event._id,
+          title: event.title,
+          organizer: event.createdBy ? `${event.createdBy.firstName} ${event.createdBy.lastName}` : 'Unknown',
+          organizerEmail: event.createdBy ? event.createdBy.email : 'N/A',
+          category: event.category,
+          date: new Date(event.date).toLocaleDateString(),
+          time: new Date(event.date).toLocaleTimeString(),
+          location: event.location,
+          venue: event.venue || 'N/A',
+          status: event.status,
+          attendees: event.totalAttendees || 0,
+          maxAttendees: event.capacity,
+          ticketPrice: event.price,
+          revenue: event.totalEarnings || 0,
+          description: event.description,
+          createdAt: new Date(event.createdAt).toLocaleDateString(),
+          images: event.images || [],
+          tags: event.tags || [],
+          isFeatured: event.isFeatured,
+          availableSeats: event.availableSeats,
+          endDate: event.endDate ? new Date(event.endDate).toLocaleDateString() : null
+        }));
+        
+        setEvents(mappedEvents);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
   const filteredEvents = events.filter(event => {
@@ -78,14 +62,6 @@ const EventsManagement = () => {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const handleEventAction = (eventId, action) => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId 
-        ? { ...event, status: action }
-        : event
-    ));
-  };
-
   const getStatusBadge = (status) => {
     const badges = {
       draft: 'bg-gray-700 text-gray-300 border-gray-600',
@@ -94,17 +70,17 @@ const EventsManagement = () => {
       completed: 'bg-purple-900 text-purple-300 border-purple-700',
       cancelled: 'bg-red-900 text-red-300 border-red-700'
     };
-    return badges[status];
+    return badges[status] || badges.draft;
   };
 
   const getCategoryIcon = (category) => {
     const icons = {
-      Technology: '💻',
-      Music: '🎵',
-      Business: '💼',
-      Sports: '⚽',
-      Food: '🍕',
-      Arts: '🎨'
+      concert: '🎵',
+      workshop: '🛠️',
+      webinar: '💻',
+      meetup: '👥',
+      conference: '🏢',
+      other: '📅'
     };
     return icons[category] || '📅';
   };
@@ -126,6 +102,10 @@ const EventsManagement = () => {
           <h1 className="text-2xl font-bold text-white mb-2">Events Management</h1>
           <p className="text-gray-400">Monitor and manage all platform events</p>
         </div>
+        <div className="mt-4 md:mt-0">
+          <span className="text-gray-400">Total Events: </span>
+          <span className="text-white font-bold">{events.length}</span>
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -135,7 +115,7 @@ const EventsManagement = () => {
             {[
               { key: 'all', label: 'All Events' },
               { key: 'published', label: 'Published' },
-              { key: 'active', label: 'Active' },
+              { key: 'draft', label: 'Draft' },
               { key: 'completed', label: 'Completed' },
               { key: 'cancelled', label: 'Cancelled' }
             ].map(filterOption => (
@@ -160,12 +140,12 @@ const EventsManagement = () => {
               className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-red-500"
             >
               <option value="all">All Categories</option>
-              <option value="Technology">Technology</option>
-              <option value="Music">Music</option>
-              <option value="Business">Business</option>
-              <option value="Sports">Sports</option>
-              <option value="Food">Food</option>
-              <option value="Arts">Arts</option>
+              <option value="concert">Concert</option>
+              <option value="workshop">Workshop</option>
+              <option value="webinar">Webinar</option>
+              <option value="meetup">Meetup</option>
+              <option value="conference">Conference</option>
+              <option value="other">Other</option>
             </select>
             
             <div className="relative">
@@ -194,71 +174,81 @@ const EventsManagement = () => {
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Organizer</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Date & Time</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Status</th>
-                <th className="text-left py-4 px-6 text-gray-300 font-medium">Attendees</th>
+                <th className="text-left py-4 px-6 text-gray-300 font-medium">Capacity</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Revenue</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredEvents.map(event => (
-                <tr key={event.id} className="border-t border-gray-700 hover:bg-gray-700/50">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center space-x-3">
-                      <div className="text-2xl">{getCategoryIcon(event.category)}</div>
-                      <div>
-                        <p className="text-white font-medium">{event.title}</p>
-                        <p className="text-gray-400 text-sm">{event.category}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    <p className="text-white">{event.organizer}</p>
-                    <p className="text-gray-400 text-sm">{event.organizerEmail}</p>
-                  </td>
-                  <td className="py-4 px-6">
-                    <p className="text-white">{event.date}</p>
-                    <p className="text-gray-400 text-sm">{event.time}</p>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(event.status)}`}>
-                      {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <p className="text-white">{event.attendees}/{event.maxAttendees}</p>
-                    <div className="w-full bg-gray-600 rounded-full h-2 mt-1">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full" 
-                        style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
-                      ></div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-white">
-                    ₹{event.revenue.toLocaleString()}
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedEvent(event);
-                          setShowEventModal(true);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                      >
-                        View
-                      </button>
-                      {event.status === 'published' && (
-                        <button
-                          onClick={() => handleEventAction(event.id, 'cancelled')}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
+              {filteredEvents.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 px-6 text-center text-gray-400">
+                    No events found matching your criteria.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredEvents.map(event => (
+                  <tr key={event.id} className="border-t border-gray-700 hover:bg-gray-700/50">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">{getCategoryIcon(event.category)}</div>
+                        <div>
+                          <p className="text-white font-medium">{event.title}</p>
+                          <p className="text-gray-400 text-sm">{event.category}</p>
+                          {event.isFeatured && (
+                            <span className="inline-block bg-yellow-600 text-yellow-100 text-xs px-2 py-1 rounded-full mt-1">
+                              Featured
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="text-white">{event.organizer}</p>
+                      <p className="text-gray-400 text-sm">{event.organizerEmail}</p>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="text-white">{event.date}</p>
+                      <p className="text-gray-400 text-sm">{event.time}</p>
+                      {event.endDate && (
+                        <p className="text-gray-500 text-xs">Ends: {event.endDate}</p>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(event.status)}`}>
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="text-white">{event.attendees}/{event.maxAttendees}</p>
+                      <div className="w-full bg-gray-600 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full" 
+                          style={{ width: `${Math.min((event.attendees / event.maxAttendees) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1">{event.availableSeats} seats left</p>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="text-white">₹{event.revenue.toLocaleString()}</p>
+                      <p className="text-gray-400 text-xs">₹{event.ticketPrice}/ticket</p>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setShowEventModal(true);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -267,7 +257,7 @@ const EventsManagement = () => {
       {/* Event Details Modal */}
       {showEventModal && selectedEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Event Details</h3>
               <button
@@ -285,6 +275,15 @@ const EventsManagement = () => {
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-white mb-2">{selectedEvent.title}</h2>
                   <p className="text-gray-400">{selectedEvent.description}</p>
+                  {selectedEvent.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedEvent.tags.map((tag, index) => (
+                        <span key={index} className="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadge(selectedEvent.status)}`}>
                   {selectedEvent.status.charAt(0).toUpperCase() + selectedEvent.status.slice(1)}
@@ -301,12 +300,17 @@ const EventsManagement = () => {
                   </div>
                   <div>
                     <label className="text-gray-400 text-sm">Date & Time</label>
-                    <p className="text-white font-medium">{selectedEvent.date}</p>
-                    <p className="text-gray-400 text-sm">{selectedEvent.time}</p>
+                    <p className="text-white font-medium">{selectedEvent.date} at {selectedEvent.time}</p>
+                    {selectedEvent.endDate && (
+                      <p className="text-gray-400 text-sm">Ends: {selectedEvent.endDate}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-gray-400 text-sm">Location</label>
                     <p className="text-white font-medium">{selectedEvent.location}</p>
+                    {selectedEvent.venue !== 'N/A' && (
+                      <p className="text-gray-400 text-sm">Venue: {selectedEvent.venue}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -327,14 +331,14 @@ const EventsManagement = () => {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-gray-700 p-4 rounded-lg">
                   <p className="text-gray-400 text-sm">Attendees</p>
                   <p className="text-2xl font-bold text-white">{selectedEvent.attendees}/{selectedEvent.maxAttendees}</p>
                   <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${(selectedEvent.attendees / selectedEvent.maxAttendees) * 100}%` }}
+                      style={{ width: `${Math.min((selectedEvent.attendees / selectedEvent.maxAttendees) * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -346,22 +350,42 @@ const EventsManagement = () => {
                   <p className="text-gray-400 text-sm">Occupancy</p>
                   <p className="text-2xl font-bold text-blue-400">{Math.round((selectedEvent.attendees / selectedEvent.maxAttendees) * 100)}%</p>
                 </div>
+                <div className="bg-gray-700 p-4 rounded-lg">
+                  <p className="text-gray-400 text-sm">Available Seats</p>
+                  <p className="text-2xl font-bold text-yellow-400">{selectedEvent.availableSeats}</p>
+                </div>
               </div>
+
+              {/* Event Images */}
+              {selectedEvent.images.length > 0 && (
+                <div>
+                  <label className="text-gray-400 text-sm mb-2 block">Event Images</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {selectedEvent.images.slice(0, 6).map((image, index) => (
+                      <div key={index} className="bg-gray-700 p-2 rounded-lg">
+                        <img 
+                          src={image} 
+                          alt={`Event ${index + 1}`}
+                          className="w-full h-24 object-cover rounded"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex space-x-3 pt-4 border-t border-gray-700">
-                {selectedEvent.status === 'published' && (
-                  <button
-                    onClick={() => handleEventAction(selectedEvent.id, 'cancelled')}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg"
-                  >
-                    Cancel Event
-                  </button>
-                )}
                 <button className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg">
                   Contact Organizer
                 </button>
                 <button className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg">
+                  View Attendees
+                </button>
+                <button className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg">
                   Download Report
                 </button>
               </div>

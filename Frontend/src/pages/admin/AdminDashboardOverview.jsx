@@ -1,90 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { adminAPI } from '../../api'; 
 
 const AdminDashboardOverview = () => {
-  const [dashboardData, setDashboardData] = useState(
-    {
-     stats: {
-          totalUsers: 12547,
-          totalOrganizers: 342,
-          pendingVerifications: 23,
-          totalEvents: 1856,
-          activeEvents: 89,
-          totalRevenue: 2847500,
-          thisMonthRevenue: 485600,
-          thisMonthUsers: 1247,
-          thisMonthEvents: 156
-        },
-        recentActivities: [
-          { id: 1, type: 'user_signup', user: 'John Doe', action: 'signed up', time: '2 minutes ago' },
-          { id: 2, type: 'event_created', user: 'Tech Events Ltd.', action: 'created new event', time: '15 minutes ago' },
-          { id: 3, type: 'organizer_verified', user: 'Sarah Wilson', action: 'got verified', time: '1 hour ago' },
-          { id: 4, type: 'event_published', user: 'Mumbai Meetups', action: 'published event', time: '2 hours ago' },
-          { id: 5, type: 'payment_received', user: 'Concert Pro', action: 'received payment', time: '3 hours ago' }
-        ],
-        pendingOrganizers: [
-          { id: 1, name: 'Alex Johnson', company: 'EventCorp', email: 'alex@eventcorp.com', submitted: '2024-01-15', documents: 3 },
-          { id: 2, name: 'Maria Garcia', company: 'Summit Events', email: 'maria@summit.com', submitted: '2024-01-14', documents: 2 },
-          { id: 3, name: 'David Kim', company: 'Digital Conferences', email: 'david@digital.com', submitted: '2024-01-13', documents: 4 }
-        ],
-        systemHealth: {
-          serverStatus: 'healthy',
-          databaseStatus: 'healthy',
-          paymentGateway: 'healthy',
-          emailService: 'warning',
-          lastBackup: '2024-01-15 03:00 AM'
-        } 
-    }
-  );
-  const [loading, setLoading] = useState(false);
-   
- 
-  // Dummy data - replace with API calls later
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
+
   useEffect(() => {
-    console.log("Fetching admin dashboard data...");
-    // Simulate loading
-    setLoading(true);
-    setTimeout(() => {
-      setDashboardData({
-        stats: {
-          totalUsers: 12547,
-          totalOrganizers: 342,
-          pendingVerifications: 23,
-          totalEvents: 1856,
-          activeEvents: 89,
-          totalRevenue: 2847500,
-          thisMonthRevenue: 485600,
-          thisMonthUsers: 1247,
-          thisMonthEvents: 156
-        },
-        recentActivities: [
-          { id: 1, type: 'user_signup', user: 'John Doe', action: 'signed up', time: '2 minutes ago' },
-          { id: 2, type: 'event_created', user: 'Tech Events Ltd.', action: 'created new event', time: '15 minutes ago' },
-          { id: 3, type: 'organizer_verified', user: 'Sarah Wilson', action: 'got verified', time: '1 hour ago' },
-          { id: 4, type: 'event_published', user: 'Mumbai Meetups', action: 'published event', time: '2 hours ago' },
-          { id: 5, type: 'payment_received', user: 'Concert Pro', action: 'received payment', time: '3 hours ago' }
-        ],
-        pendingOrganizers: [
-          { id: 1, name: 'Alex Johnson', company: 'EventCorp', email: 'alex@eventcorp.com', submitted: '2024-01-15', documents: 3 },
-          { id: 2, name: 'Maria Garcia', company: 'Summit Events', email: 'maria@summit.com', submitted: '2024-01-14', documents: 2 },
-          { id: 3, name: 'David Kim', company: 'Digital Conferences', email: 'david@digital.com', submitted: '2024-01-13', documents: 4 }
-        ],
-        systemHealth: {
-          serverStatus: 'healthy',
-          databaseStatus: 'healthy',
-          paymentGateway: 'healthy',
-          emailService: 'warning',
-          lastBackup: '2024-01-15 03:00 AM'
-        }
-      });
-      setLoading(false);
-    }, 1000);
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const statsResponse = await adminAPI.getDashboardStats();
+        const usersResponse = await adminAPI.getAllUsers();
+
+        const pendingOrganizers = usersResponse.filter(
+          user => !user.isOrganizer && user.role === 'user' && user.pendingVerification === true
+        );
+
+        setDashboardData({
+          stats: {
+            totalUsers: statsResponse.users,
+            totalOrganizers: usersResponse.filter(u => u.role === 'organizer').length,
+            pendingVerifications: pendingOrganizers.length,
+            totalEvents: statsResponse.events,
+            activeEvents: 0, // Extend backend if needed
+            totalRevenue: statsResponse.totalRevenue,
+            thisMonthRevenue: 0,
+            thisMonthUsers: 0,
+            thisMonthEvents: 0
+          },
+          recentActivities: [], // Optional: fetch if available
+          pendingOrganizers: pendingOrganizers.map(org => ({
+            id: org._id,
+            name: `${org.firstName} ${org.lastName}`,
+            company: org.company || 'N/A',
+            email: org.email,
+            submitted: org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A',
+            documents: 0 // Update if documents data is available
+          })),
+          systemHealth: {
+            serverStatus: 'healthy',
+            databaseStatus: 'healthy',
+            paymentGateway: 'healthy',
+            emailService: 'healthy',
+            lastBackup: 'N/A',
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, []);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR'
+      currency: 'INR',
     }).format(amount);
   };
 
@@ -103,12 +79,51 @@ const AdminDashboardOverview = () => {
     const colors = {
       healthy: 'text-green-400',
       warning: 'text-yellow-400',
-      error: 'text-red-400'
+      error: 'text-red-400',
     };
     return colors[status] || 'text-gray-400';
   };
 
-  if (loading) {
+  const handleApprove = async (id) => {
+    setProcessingId(id);
+    try {
+      await adminAPI.approveOrganizer(id);
+      setDashboardData(prev => ({
+        ...prev,
+        pendingOrganizers: prev.pendingOrganizers.filter(org => org.id !== id),
+        stats: {
+          ...prev.stats,
+          totalOrganizers: prev.stats.totalOrganizers + 1,
+          pendingVerifications: prev.stats.pendingVerifications - 1,
+        }
+      }));
+    } catch (error) {
+      console.error('Approve failed:', error);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    setProcessingId(id);
+    try {
+      await adminAPI.rejectOrganizer(id);
+      setDashboardData(prev => ({
+        ...prev,
+        pendingOrganizers: prev.pendingOrganizers.filter(org => org.id !== id),
+        stats: {
+          ...prev.stats,
+          pendingVerifications: prev.stats.pendingVerifications - 1,
+        }
+      }));
+    } catch (error) {
+      console.error('Reject failed:', error);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  if (loading || !dashboardData) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
@@ -116,7 +131,7 @@ const AdminDashboardOverview = () => {
       </div>
     );
   }
-  console.log(dashboardData);
+
   const { stats, recentActivities, pendingOrganizers, systemHealth } = dashboardData;
 
   return (
@@ -150,7 +165,7 @@ const AdminDashboardOverview = () => {
           { label: 'Total Organizers', value: stats.totalOrganizers.toLocaleString(), icon: '👨‍💼', color: 'green', change: `${stats.pendingVerifications} pending verification` },
           { label: 'Total Events', value: stats.totalEvents.toLocaleString(), icon: '🎪', color: 'purple', change: `${stats.activeEvents} currently active` },
           { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: '💰', color: 'yellow', change: `+${formatCurrency(stats.thisMonthRevenue)} this month` }
-        ].map((stat, index) => (
+        ].map((stat) => (
           <div
             key={stat.label}
             className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:scale-105 transition-all duration-300"
@@ -169,61 +184,46 @@ const AdminDashboardOverview = () => {
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Activities */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Recent Activities</h2>
-            <Link to="/admin/activities" className="text-red-400 hover:text-red-300 text-sm">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {recentActivities.map(activity => (
-              <div key={activity.id} className="flex items-center space-x-4 p-3 bg-gray-700 rounded-lg">
-                <div className="text-2xl">{getActivityIcon(activity.type)}</div>
-                <div className="flex-1">
-                  <p className="text-white text-sm">
-                    <span className="font-semibold">{activity.user}</span> {activity.action}
-                  </p>
-                  <p className="text-gray-400 text-xs">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Pending Verifications */}
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-white">Pending Verifications</h2>
+          <Link to="/admin/organizers" className="text-red-400 hover:text-red-300 text-sm">
+            Manage All
+          </Link>
         </div>
-
-        {/* Pending Verifications */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Pending Verifications</h2>
-            <Link to="/admin/organizers" className="text-red-400 hover:text-red-300 text-sm">
-              Manage All
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {pendingOrganizers.map(organizer => (
-              <div key={organizer.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
-                <div>
-                  <h3 className="font-semibold text-white">{organizer.name}</h3>
-                  <p className="text-gray-400 text-sm">{organizer.company}</p>
-                  <p className="text-gray-500 text-xs">Submitted: {organizer.submitted}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-yellow-400 text-sm font-medium">{organizer.documents} docs</p>
-                  <div className="flex space-x-2 mt-2">
-                    <button className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
-                      Approve
-                    </button>
-                    <button className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
-                      Reject
-                    </button>
-                  </div>
+        <div className="space-y-4">
+          {pendingOrganizers.length === 0 && (
+            <p className="text-gray-400 text-center">No pending organizer approvals.</p>
+          )}
+          {pendingOrganizers.map(organizer => (
+            <div key={organizer.id} className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+              <div>
+                <h3 className="font-semibold text-white">{organizer.name}</h3>
+                <p className="text-gray-400 text-sm">{organizer.company}</p>
+                <p className="text-gray-500 text-xs">Submitted: {organizer.submitted}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-yellow-400 text-sm font-medium">{organizer.documents} docs</p>
+                <div className="flex space-x-2 mt-2">
+                  <button
+                    onClick={() => handleApprove(organizer.id)}
+                    disabled={processingId === organizer.id}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                  >
+                    {processingId === organizer.id ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleReject(organizer.id)}
+                    disabled={processingId === organizer.id}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+                  >
+                    {processingId === organizer.id ? 'Processing...' : 'Reject'}
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -14,18 +14,7 @@ const Footer = () => {
       { name: 'Create Account', path: '/signup', icon: '👤' },
       { name: 'About Us', path: '/about', icon: '📖' },
     ],
-    organizers: [
-      { name: 'Create Event', path: '/create-event', icon: '➕' },
-      { name: 'Manage Events', path: '/manage-events', icon: '⚙️' },
-      { name: 'Pricing', path: '/pricing', icon: '💰' },
-      { name: 'Resources', path: '/resources', icon: '📚' }
-    ],
-    support: [
-      { name: 'Help Center', path: '/help', icon: '❓' },
-      { name: 'Contact Us', path: '/contact', icon: '📞' },
-      { name: 'Privacy Policy', path: '/privacy', icon: '🔒' },
-      { name: 'Terms of Service', path: '/terms', icon: '📋' }
-    ]
+   
   };
 
   const socialLinks = [
@@ -127,45 +116,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* For Organizers */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6 text-white">For Organizers</h4>
-            <ul className="space-y-3">
-              {footerSections.organizers.map((link) => (
-                <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors duration-200 group"
-                  >
-                    <span className="group-hover:scale-110 transition-transform duration-200">
-                      {link.icon}
-                    </span>
-                    <span className="hover:underline">{link.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6 text-white">Support</h4>
-            <ul className="space-y-3">
-              {footerSections.support.map((link) => (
-                <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors duration-200 group"
-                  >
-                    <span className="group-hover:scale-110 transition-transform duration-200">
-                      {link.icon}
-                    </span>
-                    <span className="hover:underline">{link.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+         
         </div>
       </div>
 

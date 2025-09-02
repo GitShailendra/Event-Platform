@@ -345,10 +345,17 @@ export const chatAPI = {
 
 // ADMIN APIs
 export const adminAPI = {
-  getAllUsers: (params = {}) => get('/admin/users', params),
   deleteUser: (id) => del(`/admin/users/${id}`),
   updateUserRole: (id, role) => patch(`/admin/users/${id}/role`, { role }),
   getDashboardStats: () => get('/admin/dashboard/stats'),
+  getAllUsers: () => get('/admin/users'),
+  blockUser: (id) => patch(`/admin/users/${id}/block`),
+  unblockUser: (id) => patch(`/admin/users/${id}/unblock`),
+  approveOrganizer: (id) => patch(`/admin/users/${id}/approve-organizer`),
+  rejectOrganizer: (id) => patch(`/admin/users/${id}/reject-organizer`),
+  getAllEvents: () => get('/admin/events'),
+  getDashboardStats: () => get('/admin/dashboard/stats'),
+  getAllUsers: (params = {}) => get('/admin/users', params),
 };
 
 // FILE UPLOAD APIs

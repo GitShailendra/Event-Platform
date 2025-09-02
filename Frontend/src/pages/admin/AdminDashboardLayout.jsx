@@ -21,8 +21,6 @@ const AdminDashboardLayout = () => {
     { id: 'organizers', name: 'Organizers', icon: '👨‍💼', path: '/admin/organizers' },
     { id: 'users', name: 'Users', icon: '👥', path: '/admin/users' },
     { id: 'events', name: 'All Events', icon: '🎪', path: '/admin/events' },
-    { id: 'analytics', name: 'Analytics', icon: '📈', path: '/admin/analytics' },
-    { id: 'settings', name: 'Settings', icon: '⚙️', path: '/admin/settings' }
   ];
 
   const isActive = (path) => location.pathname === path;

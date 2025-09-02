@@ -1,61 +1,52 @@
 import React, { useState, useEffect } from 'react';
+import { adminAPI } from '../../api'; // Adjust path as needed
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
 
-  // Dummy data
+  // Fetch real users data
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setUsers([
-        {
-          id: 1,
-          name: 'Alice Johnson',
-          email: 'alice@example.com',
-          phone: '+91 9876543210',
-          location: 'Mumbai, India',
-          status: 'active',
-          joinedAt: '2024-01-10',
-          lastLogin: '2024-01-15 10:30 AM',
-          eventsAttended: 12,
-          totalSpent: 15000,
-          preferredCategories: ['Technology', 'Business']
-        },
-        {
-          id: 2,
-          name: 'Bob Smith',
-          email: 'bob@example.com',
-          phone: '+91 9876543211',
-          location: 'Delhi, India',
-          status: 'active',
-          joinedAt: '2023-12-15',
-          lastLogin: '2024-01-14 08:15 AM',
-          eventsAttended: 8,
-          totalSpent: 8500,
-          preferredCategories: ['Music', 'Arts']
-        },
-        {
-          id: 3,
-          name: 'Carol Davis',
-          email: 'carol@example.com',
-          phone: '+91 9876543212',
-          location: 'Bangalore, India',
-          status: 'suspended',
-          joinedAt: '2023-11-20',
-          lastLogin: '2024-01-10 02:45 PM',
-          eventsAttended: 3,
-          totalSpent: 2500,
-          preferredCategories: ['Food', 'Lifestyle'],
-          suspensionReason: 'Inappropriate behavior'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const response = await adminAPI.getAllUsers();
+        console.log('Fetched users:', response);
+        
+        const { users: usersData } = response;
+        
+        // Map users to frontend format
+        const mappedUsers = usersData.map(user => ({
+          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          phone: user.phoneNumber || user.phone || 'N/A',
+          location: user.location || 'N/A',
+          status: user.isActive ? 'active' : 'suspended',
+          joinedAt: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+          lastLogin: 'N/A', // Add if you track last login
+          eventsAttended: 0, // Add if you track this
+          totalSpent: 0, // Add if you track this
+          preferredCategories: [], // Add if you track this
+          suspensionReason: user.isActive ? undefined : 'Blocked by admin',
+          role: user.role,
+          isOrganizer: user.isOrganizer
+        }));
+        
+        setUsers(mappedUsers);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   const filteredUsers = users.filter(user => {
@@ -65,16 +56,30 @@ const UserManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleUserAction = (userId, action) => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { 
-            ...user, 
-            status: action === 'suspend' ? 'suspended' : 'active',
-            suspensionReason: action === 'suspend' ? 'Suspended by admin' : undefined
-          }
-        : user
-    ));
+  const handleUserAction = async (userId, action) => {
+    setProcessingId(userId);
+    try {
+      if (action === 'suspend') {
+        await adminAPI.blockUser(userId);
+      } else if (action === 'activate') {
+        await adminAPI.unblockUser(userId);
+      }
+
+      // Update local state
+      setUsers(prev => prev.map(user => 
+        user.id === userId 
+          ? { 
+              ...user, 
+              status: action === 'suspend' ? 'suspended' : 'active',
+              suspensionReason: action === 'suspend' ? 'Blocked by admin' : undefined
+            }
+          : user
+      ));
+    } catch (error) {
+      console.error(`Error ${action}ing user:`, error);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -112,7 +117,7 @@ const UserManagement = () => {
             {[
               { key: 'all', label: 'All Users' },
               { key: 'active', label: 'Active' },
-              { key: 'suspended', label: 'Suspended' },
+              { key: 'suspended', label: 'Blocked' },
               { key: 'inactive', label: 'Inactive' }
             ].map(filterOption => (
               <button
@@ -151,15 +156,16 @@ const UserManagement = () => {
               <tr>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">User</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Contact</th>
+                <th className="text-left py-4 px-6 text-gray-300 font-medium">Role</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Status</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Activity</th>
-                <th className="text-left py-4 px-6 text-gray-300 font-medium">Spending</th>
                 <th className="text-left py-4 px-6 text-gray-300 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map(user => (
-                <tr key={user.id} className="border-t border-gray-700 hover:bg-gray-700/50">
+                (user.role!== 'admin' &&(
+                  <tr key={user.id} className="border-t border-gray-700 hover:bg-gray-700/50">
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
@@ -176,16 +182,23 @@ const UserManagement = () => {
                     <p className="text-gray-400 text-sm">{user.location}</p>
                   </td>
                   <td className="py-4 px-6">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      user.role === 'admin' ? 'bg-purple-900 text-purple-300' :
+                      user.role === 'organizer' ? 'bg-orange-900 text-orange-300' :
+                      'bg-blue-900 text-blue-300'
+                    }`}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      {user.isOrganizer && user.role !== 'organizer' && ' (Organizer)'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(user.status)}`}>
                       {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                     </span>
                   </td>
                   <td className="py-4 px-6">
                     <p className="text-white">{user.eventsAttended} events</p>
-                    <p className="text-gray-400 text-sm">Last: {user.lastLogin}</p>
-                  </td>
-                  <td className="py-4 px-6 text-white">
-                    ₹{user.totalSpent.toLocaleString()}
+                    <p className="text-gray-400 text-sm">Total: ₹{user.totalSpent.toLocaleString()}</p>
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex space-x-2">
@@ -198,24 +211,32 @@ const UserManagement = () => {
                       >
                         View
                       </button>
-                      {user.status === 'active' ? (
-                        <button
-                          onClick={() => handleUserAction(user.id, 'suspend')}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                        >
-                          Suspend
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleUserAction(user.id, 'activate')}
-                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-                        >
-                          Activate
-                        </button>
+                      {user.role !== 'admin' && ( // Don't allow blocking admin users
+                        <>
+                          {user.status === 'active' ? (
+                            <button
+                              onClick={() => handleUserAction(user.id, 'suspend')}
+                              disabled={processingId === user.id}
+                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              {processingId === user.id ? 'Processing...' : 'Block'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUserAction(user.id, 'activate')}
+                              disabled={processingId === user.id}
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              {processingId === user.id ? 'Processing...' : 'Unblock'}
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
                 </tr>
+                ))
+                
               ))}
             </tbody>
           </table>
@@ -255,6 +276,14 @@ const UserManagement = () => {
                   <label className="text-gray-400 text-sm">Location</label>
                   <p className="text-white font-medium">{selectedUser.location}</p>
                 </div>
+                <div>
+                  <label className="text-gray-400 text-sm">Role</label>
+                  <p className="text-white font-medium">{selectedUser.role}</p>
+                </div>
+                <div>
+                  <label className="text-gray-400 text-sm">Organizer Status</label>
+                  <p className="text-white font-medium">{selectedUser.isOrganizer ? 'Yes' : 'No'}</p>
+                </div>
               </div>
 
               {/* Activity Stats */}
@@ -275,23 +304,40 @@ const UserManagement = () => {
                 </div>
               </div>
 
-              {/* Preferred Categories */}
-              <div>
-                <label className="text-gray-400 text-sm mb-2 block">Preferred Categories</label>
-                <div className="flex flex-wrap gap-2">
-                  {selectedUser.preferredCategories.map((category, index) => (
-                    <span key={index} className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
               {/* Suspension Reason */}
               {selectedUser.status === 'suspended' && selectedUser.suspensionReason && (
                 <div>
-                  <label className="text-gray-400 text-sm">Suspension Reason</label>
+                  <label className="text-gray-400 text-sm">Block Reason</label>
                   <p className="text-red-300">{selectedUser.suspensionReason}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {selectedUser.role !== 'admin' && (
+                <div className="flex space-x-3 pt-4">
+                  {selectedUser.status === 'active' ? (
+                    <button
+                      onClick={() => {
+                        handleUserAction(selectedUser.id, 'suspend');
+                        setShowUserModal(false);
+                      }}
+                      disabled={processingId === selectedUser.id}
+                      className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg disabled:opacity-50"
+                    >
+                      {processingId === selectedUser.id ? 'Processing...' : 'Block User'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleUserAction(selectedUser.id, 'activate');
+                        setShowUserModal(false);
+                      }}
+                      disabled={processingId === selectedUser.id}
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg disabled:opacity-50"
+                    >
+                      {processingId === selectedUser.id ? 'Processing...' : 'Unblock User'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
