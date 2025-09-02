@@ -415,6 +415,10 @@ export const userDashboardAPI = {
   getUserStats: () => get('/user/dashboard/stats'),
 };
 
+// COntact APIs
+export const contactAPI = {
+  submitContactForm: (data) => post('/contact', data),
+};
 // ===========================================
 // UTILITY FUNCTIONS
 // ===========================================

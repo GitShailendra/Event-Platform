@@ -74,7 +74,9 @@ exports.loginUser = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-
+    if(user.role==='organizer' && !user.isOrganizer){
+      return res.status(403).json({ message: 'Organizer account not approved yet' });
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });

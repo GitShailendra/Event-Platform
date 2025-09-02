@@ -42,7 +42,7 @@ const OrganizerManagement = () => {
               company: user.company || 'N/A',
               phone: user.phoneNumber || user.phone || 'N/A',
               location: user.location || 'N/A',
-              status: user.isOrganizer ? 'verified' : (user.pendingVerification ? 'pending' : 'rejected'),
+              status: user.isOrganizer ? 'verified' : 'pending',
               submittedAt: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
               verifiedAt: user.isOrganizer && user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : undefined,
               rejectedAt: !user.isOrganizer && !user.pendingVerification ? new Date(user.updatedAt).toLocaleDateString() : undefined,
@@ -57,6 +57,7 @@ const OrganizerManagement = () => {
           });
 
         setOrganizers(organizerUsers);
+        console.log('Processed organizers:', organizerUsers);
       } catch (error) {
         console.error('Error fetching organizers:', error);
       } finally {
