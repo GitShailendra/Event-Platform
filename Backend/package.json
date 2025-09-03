@@ -5,8 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "shailendra": "nodemon index.js",
-    "postinstall": "rm -rf node_modules && npm install --legacy-peer-deps"
+    "shailendra": "nodemon index.js"
   },
   "engines": {
     "node": "20.x"
