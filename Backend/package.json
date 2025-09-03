@@ -8,9 +8,8 @@
     "shailendra": "nodemon index.js"
   },
   "engines": {
-  "node": "22.13.1"
-},
-
+    "node": "22.13.1"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -25,7 +24,7 @@
     "express-rate-limit": "^8.0.1",
     "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.17.2",
+    "mongoose": "^8.7.1",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
